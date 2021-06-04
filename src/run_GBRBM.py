@@ -30,6 +30,7 @@ parser.add_argument("--Nh", help="number of hidden nodes",
                     type=int, default=50)
 parser.add_argument(
     "--data_gen", help="1 to use generated data, 0 to use MNIST, 2 for YEAST", type=int, default=1)
+parser.add_argument("--var", help="the var list ", type=float, nargs='+', default=1)
 args = parser.parse_args()
 
 device = torch.device(torch.device(
