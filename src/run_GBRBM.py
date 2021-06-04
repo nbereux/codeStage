@@ -1,5 +1,5 @@
-# from genGaussianData import genGaussianData
 from RBM import GBRBM
+from genGaussianData import genGaussianData
 import torch
 import h5py
 import argparse
