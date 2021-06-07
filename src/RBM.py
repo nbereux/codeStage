@@ -1,7 +1,7 @@
 import torch
 import h5py
 import numpy as np
-
+import matplotlib.pyplot as plt
 class GBRBM:
     # NEEDED VAR:
     # * num_visible
@@ -23,10 +23,10 @@ class GBRBM:
                  ):
         self.Nv = num_visible
         self.Nh = num_hidden
+        self.device = device
         self.var_set = var_set
         self.var = torch.ones(self.Nv, device=self.device)
         self.gibbs_steps = gibbs_steps
-        self.device = device
         self.dtype = dtype
         # weight of the RBM
         self.W_1 = torch.randn(size=(self.Nh, self.Nv),
@@ -66,11 +66,11 @@ class GBRBM:
     # using CurrentState
 
     def SampleHiddens01(self, V, β=1):
-        t = self.sigV*self.sigV
+        t = 1/self.var
         mh = torch.sigmoid(
             β*(torch.unsqueeze(self.hbias, 1) +
-               torch.matmul(torch.div(self.W_1, t), V) +
-               torch.matmul(torch.div(self.W_2, t), V*V)))
+               torch.matmul(self.W_1*t, V) +
+               torch.matmul(self.W_2*t, V*V)))
         h = torch.bernoulli(mh)
         return h, mh
 
@@ -80,7 +80,7 @@ class GBRBM:
     def SampleVisiblesGaus(self, H, eps=1e-4):
         mu = (torch.matmul(self.W_1.T, H)+torch.unsqueeze(self.vbias, 1)) / \
             (1-2*torch.matmul(self.W_2.T, H))
-        t = (self.sigV*self.sigV)
+        t = 1/self.var
         t = torch.unsqueeze(t, 1)
         t = t.repeat(1, mu.shape[1])
         var = torch.div(t, 1-2*torch.matmul(self.W_2.T, H))
@@ -128,11 +128,11 @@ class GBRBM:
         lr_n_W1 = self.lr_W1/self.num_pcd
         lr_p_W2 = self.lr_W2/self.mb_s
         lr_n_W2 = self.lr_W2/self.num_pcd
-        t = (self.sigV*self.sigV)
-        v_pos_W1 = torch.div(v_pos.T, t)
-        v_pos_W2 = torch.div((v_pos*v_pos).T, t)
-        v_neg_W2 = torch.div((v_neg*v_neg).T, t).T
-        v_neg_W1 = torch.div(v_neg.T, t).T
+        t = 1/self.var
+        v_pos_W1 = v_pos.T*t
+        v_pos_W2 = (v_pos*v_pos).T*t
+        v_neg_W2 = ((v_neg*v_neg).T*t).T
+        v_neg_W1 = (v_neg.T*t).T
 
         self.vbias += torch.sum(v_pos_W1.T, 1)*lr_p_W1 - \
             torch.sum(v_neg_W1, 1)*lr_n_W1
@@ -168,12 +168,12 @@ class GBRBM:
             self.VisDataAv = torch.mean(X, 1)
 
         if (len(self.list_save_time) > 0) & (self.up_tot == 0):
-            f = h5py.File('model/AllParameters'+self.file_stamp+'.h5', 'w')
+            f = h5py.File('../model/AllParameters'+self.file_stamp+'.h5', 'w')
             f.create_dataset('alltime', data=self.list_save_time)
             f.close()
 
         if (len(self.list_save_rbm) > 0) & (self.ep_tot == 0):
-            f = h5py.File('model/RBM'+self.file_stamp+'.h5', 'w')
+            f = h5py.File('../model/RBM'+self.file_stamp+'.h5', 'w')
             f.create_dataset('lr_W1', data=self.lr_W1)
             f.create_dataset('lr_W2', data=self.lr_W2)
             f.create_dataset('NGibbs', data=self.gibbs_steps)
@@ -192,13 +192,22 @@ class GBRBM:
                 if self.ResetPermChainBatch:
                     self.X_pc = torch.normal(
                         torch.zeros(self.Nv, self.X_pc.shape[1],
-                                    device=self.device), std=torch.unsqueeze(self.sigV, 1).repeat(1, self.X_pc.shape[1]))
+                                    device=self.device), std=torch.unsqueeze(torch.sqrt(self.var), 1).repeat(1, self.X_pc.shape[1]))
                     self.X_pc = self.X_pc.to(self.device)
                 Xb = self.getMiniBatches(Xp, m)
                 self.fit_batch(Xb)
 
                 if self.up_tot in self.list_save_time:
-                    f = h5py.File('model/AllParameters' +
+                    vinit = torch.bernoulli(torch.rand(
+                        (self.Nv, 10), device=self.device, dtype=self.dtype))
+                    
+                    tmp, _, _, _ = self.Sampling(vinit, it_mcmc=self.gibbs_steps)
+                    fig, ax = plt.subplots(1, tmp.shape[1])
+                    for i in range(tmp.shape[1]):
+                        ax[i].imshow(tmp[:,i].view(28,28).cpu())
+                    plt.savefig("../tmp/ep"+str(self.ep_tot)+".png")
+
+                    f = h5py.File('../model/AllParameters' +
                                   self.file_stamp+'.h5', 'a')
                     print('Saving nb_upd='+str(self.up_tot))
                     f.create_dataset('W_1'+str(self.up_tot),
@@ -214,7 +223,7 @@ class GBRBM:
                 self.up_tot += 1
 
             if self.ep_tot in self.list_save_rbm:
-                f = h5py.File('model/RBM'+self.file_stamp+'.h5', 'a')
+                f = h5py.File('../model/RBM'+self.file_stamp+'.h5', 'a')
                 f.create_dataset('W_1'+str(self.up_tot),
                                  data=self.W_1.cpu())
                 f.create_dataset('W_2'+str(self.up_tot),

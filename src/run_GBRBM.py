@@ -8,8 +8,10 @@ import pickle
 import sys
 import os
 import numpy as np
-sys.path.insert(1, '/home/nicolas/Stage/code/stage/src')
-sys.path.insert(1, '/home/nicolas/Stage/code/stage/data')
+import pathlib
+path = str(pathlib.Path(__file__).parent.absolute())+'/'
+# sys.path.insert(1, '/home/nicolas/Stage/code/stage/src')
+# sys.path.insert(1, '/home/nicolas/Stage/code/stage/data')
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -92,27 +94,27 @@ if args.data_gen == 1:
     data_t = "data_gen"
     if args.mode == 0:
         if os.path.isfile(fname):
-            f = h5py.File('data/'+fname, 'r')
+            f = h5py.File(path+'../data/'+fname, 'r')
             centers = torch.tensor(f['centers'], device=device)
             var = torch.tensor(f['var'], device=device)
             X = torch.tensor(f['data'], device=device)
         else:
             genGaussianData(dim, Nsample, l_cube, torch.tensor(var))
-            f = h5py.File('data/'+fname, 'r')
+            f = h5py.File(path+'../data/'+fname, 'r')
             centers = torch.tensor(f['centers'], device=device)
             var = torch.tensor(f['var'], device=device)
             X = torch.tensor(f['data'], device=device)
         f.close()
 
     elif args.mode == 1:
-        f = h5py.File('data/'+fname, 'r')
+        f = h5py.File(path+'../data/'+fname, 'r')
         centers = torch.tensor(f['centers'], device = device)
         var = torch.tensor(f['var'], device = device)
         X = torch.tensor(f['data'], device = device)
 
-elif args.data_gen == 1:
+elif args.data_gen == 0:
     data_t = "MNIST"
-    f = gzip.open('./data/mnist.pkl.gz', 'rb')
+    f = gzip.open(path+'../data/mnist.pkl.gz', 'rb')
     u = pickle._Unpickler(f)
     u.encoding = 'latin1'
     p = u.load()
@@ -121,7 +123,7 @@ elif args.data_gen == 1:
     centers = 0
 else:
     data_t = "YEAST"
-    X = torch.tensor(torch.load("data/yeast.pt"), device = device, dtype = dtype)
+    X = torch.tensor(torch.load(path+"../data/yeast.pt"), device = device, dtype = dtype)
     centers = 0
 Nv = X.shape[0]  # numbder of visible nodes
 
@@ -164,14 +166,14 @@ if args.mode == 0:
     fq_msr_RBM = 1000
     myRBM.list_save_rbm = np.arange(1,ep_max,fq_msr_RBM)
     myRBM.fit(X, ep_max = ep_max)
-    print("model updates saved at model/AllParameters"+stamp+".h5")
-    print("model saved at model/RBM"+stamp+".h5")
+    print("model updates saved at "+ path + "../model/AllParameters"+stamp+".h5")
+    print("model saved at "+ path +"../model/RBM"+stamp+".h5")
 elif args.mode == 1:
     print("GENERATE DATA")
-    frname = 'model/AllParametersGBRBM_NGibbs_'+data_t+'_'+str(NGibbs)+'_Nh'+str(Nh)+'_Ns' + \
+    frname = path+'../model/AllParametersGBRBM_NGibbs_'+data_t+'_'+str(NGibbs)+'_Nh'+str(Nh)+'_Ns' + \
         str(Nsample)+'_Nmb'+str(n_mb)+'_'+varfold+'_'+divfold+'_'+nb_genfold+'_lr_'+str(lr)+'.h5'
     fr = h5py.File(frname,'r')
-    myRBM.centers = torch.load("/home/nberieux/data/centers_GBRBM.pt")
+    myRBM.centers = torch.load(path + "../data/centers_GBRBM.pt")
     Nh = fr['W_10'].shape[0] # get the visible shape
     Nv = fr['W_10'].shape[1] # get the hidden shape
     # usefull if you want to use the RBm
@@ -180,9 +182,9 @@ elif args.mode == 1:
         if 'W_1'+str(t) in fr:
             alltimes.append(t)
 
-    fwname = 'data/'+data_t+'_'+'_GBRBM_NGibbs'+str(NGibbs)+'_Nh'+str(Nh)+'_Ns' + \
+    fwname = '../data/'+data_t+'_'+'_GBRBM_NGibbs'+str(NGibbs)+'_Nh'+str(Nh)+'_Ns' + \
         str(Nsample)+'_Nmb'+str(n_mb)+'_'+varfold+'_'+divfold+'_'+nb_genfold+'_lr_'+str(lr)+'.h5'
-    fw = h5py.File(fwname, 'w')
+    fw = h5py.File(path+fwname, 'w')
     fw.create_dataset('alltime', data=alltimes)
     fw.close()
     for t in alltimes:
@@ -213,7 +215,7 @@ elif args.mode == 1:
                 c[i] = torch.zeros(si.T[0].shape)
             var[i].append(torch.mean(torch.std(c[i], 0)).cpu())
         var = np.array(var)
-        fw = h5py.File(fwname, 'a')
+        fw = h5py.File(path+fwname, 'a')
         print('Saving nb_upd='+str(t))
         fw.create_dataset('dataIT'+str(t),
                           data=si.cpu())
