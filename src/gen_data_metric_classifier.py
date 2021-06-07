@@ -1,6 +1,6 @@
 from torch.optim.lr_scheduler import StepLR
-from ComparisonDataset import ComparisonDataset
-from BinaryClassifier import BinaryClassifier, train, test
+from ClassifierMetric import ComparisonDataset
+from ClassifierMetric import BinaryClassifier, train, test
 import torch.optim as optim
 import torch
 import functions
@@ -12,6 +12,8 @@ import argparse
 sys.path.insert(1, '/home/nicolas/Stage/code/stage/src')
 sys.path.insert(1, '/home/nicolas/Stage/code/stage/data')
 sys.path.insert(1, '/home/nicolas/Stage/code/stage/model')
+import pathlib
+path = str(pathlib.Path(__file__).parent.absolute())+'/'
 
 device = torch.device("cuda")
 dtype = torch.float
@@ -23,7 +25,7 @@ parser.add_argument("time", help="Time at which we evaluate the machine", type =
 args = parser.parse_args()
 
 
-f = gzip.open('./data/mnist.pkl.gz', 'rb')
+f = gzip.open(path+'../data/mnist.pkl.gz', 'rb')
 u = pickle._Unpickler(f)
 u.encoding = 'latin1'
 p = u.load()
@@ -45,7 +47,7 @@ test_kwargs.update(cuda_kwargs)
 
 
 success_rate = []
-fname = "../model/" + args.filename
+fname = path + "../model/" + args.filename
 myRBM, f, alltimes = functions.retrieveRBM(device, fname)
 
 times = np.array(alltimes)[range(len(alltimes))]
@@ -92,5 +94,5 @@ for t in [args.time]:
         tmp.append(torch.linalg.norm(net(test_set.data[:2500].cuda()).round().view(
             2500)-test_set.label[:2500].cuda(), 1).item()*100/2500)
     success_rate.append(tmp[-1])
-    torch.save(success_rate, "data/classification_error_" +
+    torch.save(success_rate, path + "../data/classification_error_" +
                args.filename+".pt")

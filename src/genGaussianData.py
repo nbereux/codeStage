@@ -1,5 +1,7 @@
 import torch
 import h5py
+import pathlib
+path = str(pathlib.Path(__file__).parent.absolute())+'/'
 
 def genGaussianData(dim, Nsample, l_cube, var):
     var_str = ''
@@ -19,10 +21,10 @@ def genGaussianData(dim, Nsample, l_cube, var):
         sample.append(torch.normal(mean=centers[k], std=torch.sqrt(var[k])))
     X = torch.stack(sample).T
     
-    f = h5py.File('data/'+fname, 'w')
+    f = h5py.File(path+'../data/'+fname, 'w')
     f.create_dataset('centers', data=centers.cpu())
     f.create_dataset('var', data=var.cpu())
     f.create_dataset('data', data = X.cpu())
     f.close()
 
-    print('saved at data/' + fname)
+    print('saved at 'path+'data/' + fname)

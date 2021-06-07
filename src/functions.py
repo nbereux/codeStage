@@ -1,7 +1,9 @@
 import h5py
-import rbm
+import RBM
 import torch
 import math
+import pathlib
+path = str(pathlib.Path(__file__).parent.absolute())+'/'
 
 
 def retrieveRBM(device, fname):
@@ -21,7 +23,7 @@ def retrieveRBM(device, fname):
             alltimes.append(t)
 
     # creating the RBM
-    myRBM = rbm.RBM(num_visible=Nv,
+    myRBM = RBM.RBM(num_visible=Nv,
                     num_hidden=Nh,
                     device=device,
                     lr=lr,
