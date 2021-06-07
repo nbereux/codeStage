@@ -18,6 +18,8 @@ dtype = torch.float
 
 parser = argparse.ArgumentParser()
 parser.add_argument("filename", help="name of the machine")
+parser.add_argument("ngibbs_gen", help="Ngibbs for data generation", type = int, default = 10000)
+parser.add_argument("time", help="Time at which we evaluate the machine", type = int, default = 1)
 args = parser.parse_args()
 
 
@@ -43,12 +45,12 @@ test_kwargs.update(cuda_kwargs)
 
 
 success_rate = []
-fname = "model/" + args.filename
+fname = "../model/" + args.filename
 myRBM, f, alltimes = functions.retrieveRBM(device, fname)
 
 times = np.array(alltimes)[range(len(alltimes))]
 
-for t in [times[-1]]:
+for t in [args.time]:
     myRBM.W = torch.tensor(f['paramW'+str(t)], device=myRBM.device)
     myRBM.vbias = torch.tensor(
         f['paramVB'+str(t)], device=myRBM.device)
@@ -57,7 +59,7 @@ for t in [times[-1]]:
     vinit = torch.bernoulli(torch.rand(
         (myRBM.Nv, 10000), device=myRBM.device, dtype=myRBM.dtype))
 
-    si, _, _, _ = myRBM.Sampling(vinit, it_mcmc=10000)
+    si, _, _, _ = myRBM.Sampling(vinit, it_mcmc=args.ngibbs_gen)
     data_gen = torch.tensor(si, device=device)
     labels_gen = torch.tensor(np.ones(len(data_gen[0])), device=device)
     data = torch.cat((data_gen, data_mnist), dim=1)
