@@ -22,10 +22,10 @@ fname = path+"../model/AllParametersGBRBM_NGibbs_CLEAN_MNIST_50_Nh500_Ns10000_Nm
 f = h5py.File(fname, 'r')
 data_t = "CLEAN_MNIST"
 ep_max = 1000
-Nv = torch.tensor(f['W_10'], device = device).shape[1]
-Nh = torch.tensor(f['W_10'], device = device).shape[0]
+Nv = torch.tensor(f['W_10'], device=device).shape[1]
+Nh = torch.tensor(f['W_10'], device=device).shape[0]
 lr_W1 = 0.01
-lr_W2 = 0.001
+lr_W2 = 0.0001
 NGibbs = 50
 n_mb = 100
 n_pcd = n_mb
@@ -39,14 +39,13 @@ myRBM = GBRBM(num_visible=Nv,
               UpdCentered=False,
               mb_s=n_mb,
               num_pcd=n_pcd,
-              var_set = var_set)
+              var_set=var_set)
 fq_msr_RBM = 1000
 
 dataFile = path+"../data/cleanMNIST10000.h5"
 dataf = h5py.File(dataFile, 'r')
-X = torch.tensor(dataf['clean'], device = device)
-X = X/torch.std(X,1).reshape(X.shape[0],1)
-
+X = torch.tensor(dataf['clean'], device=device)
+X = X/torch.std(X, 1).reshape(X.shape[0], 1)
 
 
 alltimes = []
@@ -65,10 +64,10 @@ myRBM.hbias = torch.tensor(
 
 myRBM.ResetPermChainBatch = True  # Put False for PCD, False give Rdm
 stamp = "_phase_2_GBRBM_NGibbs_CLEAN_MNIST_50_Nh500_Ns10000_Nmb100_var_set_reg_100_x1_lr_0.01"
-myRBM.file_stamp = stamp	
+myRBM.file_stamp = stamp
 base = 1.7
-v = np.array([0,1],dtype=int)
-allm = np.append(np.array(0),base**np.array(list(range(30))))
+v = np.array([0, 1], dtype=int)
+allm = np.append(np.array(0), base**np.array(list(range(30))))
 for k in range(30):
     for m in allm:
         v = np.append(v,int(base**k)+int(m)) 
