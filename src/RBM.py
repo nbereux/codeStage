@@ -12,10 +12,10 @@ class GBRBM:
                  gibbs_steps=10,  # number of MCMC steps for computing the neg term
                  var_init=1e-4,  # variance of the init weights
                  dtype=torch.float,
-                 num_pcd=100,  #  number of permanent chains
+                 num_pcd=100,  # number of permanent chains
                  lr_W1=0.01,  # learning rate for W_1
                  lr_W2=1e-4,  # learning rate for W_2
-                 ep_max=100,  #  number of epochs
+                 ep_max=100,  # number of epochs
                  mb_s=50,  # size of the minibatch
                  UpdCentered=False,  # Update using centered gradients
                  CDLearning=False,
@@ -33,6 +33,7 @@ class GBRBM:
                                device=self.device, dtype=self.dtype)*var_init
         self.W_2 = torch.randn(size=(self.Nh, self.Nv),
                                device=self.device, dtype=self.dtype)*var_init
+        # self.W_2 = torch.zeros(size=(self.Nh, self.Nv), device = self.device, dtype=self.dtype)
         self.var_init = var_init
 
         # visible and hidden biases
@@ -67,10 +68,18 @@ class GBRBM:
 
     def SampleHiddens01(self, V, β=1):
         t = 1/self.var
+        tmp = self.W_2*t
+        if torch.sum(torch.isnan(tmp))!=0:
+            print(t)
+            print(self.W_2)
         mh = torch.sigmoid(
             β*(torch.unsqueeze(self.hbias, 1) +
-               torch.matmul(self.W_1*t, V) +
-               torch.matmul(self.W_2*t, V*V)))
+               torch.mm(self.W_1, V) 
+               + torch.mm(tmp, V*V)))
+        #mh = torch.where(mh < 0, torch.zeros(mh.shape, device = self.device), mh)
+        #mh = torch.where(mh > 1, torch.ones(mh.shape, device = self.device), mh)
+        assert torch.sum(torch.isnan(mh)) == 0
+        #print(test)
         h = torch.bernoulli(mh)
         return h, mh
 
@@ -78,8 +87,10 @@ class GBRBM:
     # W is Nh x Nv
     # Return Visible sample and average value for gaussian variable
     def SampleVisiblesGaus(self, H, eps=1e-4):
-        mu = (torch.matmul(self.W_1.T, H)+torch.unsqueeze(self.vbias, 1)) / \
-            (1-2*torch.matmul(self.W_2.T, H))
+        tmp = 1/(1-2*torch.mm(self.W_2.T, H))
+        assert torch.sum(torch.isnan(tmp)) == 0
+        mu = (torch.mm(self.W_1.t(), H) + self.vbias.reshape(self.Nv,1))*tmp
+            
         t = 1/self.var
         t = torch.unsqueeze(t, 1)
         t = t.repeat(1, mu.shape[1])
@@ -87,7 +98,8 @@ class GBRBM:
 
         var = torch.where(var > 0, var, torch.ones(
             var.shape, device=self.device)*eps).to(self.device)
-        sample = torch.normal(mean=mu, std=torch.sqrt(var))
+        #var = torch.abs(var)
+        sample = torch.normal(mean=mu, std=1)
         return sample, mu
 
     def GetAv(self, it_mcmc=0):
@@ -128,7 +140,7 @@ class GBRBM:
         lr_n_W1 = self.lr_W1/self.num_pcd
         lr_p_W2 = self.lr_W2/self.mb_s
         lr_n_W2 = self.lr_W2/self.num_pcd
-        t = 1/self.var
+        t = 1# /self.var
         v_pos_W1 = v_pos.T*t
         v_pos_W2 = (v_pos*v_pos).T*t
         v_neg_W2 = ((v_neg*v_neg).T*t).T
@@ -196,7 +208,7 @@ class GBRBM:
                 if self.ResetPermChainBatch:
                     self.X_pc = torch.normal(
                         torch.zeros(self.Nv, self.X_pc.shape[1],
-                                    device=self.device), std=torch.unsqueeze(torch.sqrt(self.var), 1).repeat(1, self.X_pc.shape[1]))
+                                    device=self.device), std=1) #torch.unsqueeze(torch.sqrt(self.var), 1).repeat(1, self.X_pc.shape[1]))
                     self.X_pc = self.X_pc.to(self.device)
                 Xb = self.getMiniBatches(Xp, m)
                 self.fit_batch(Xb)

@@ -21,7 +21,7 @@ dtype = torch.float
 fname = path+"../model/AllParametersGBRBM_NGibbs_CLEAN_MNIST_50_Nh500_Ns10000_Nmb100_var_set_reg_100_x1_lr_0.01.h5"
 f = h5py.File(fname, 'r')
 data_t = "CLEAN_MNIST"
-ep_max = 1000
+ep_max = 5000
 Nv = torch.tensor(f['W_10'], device=device).shape[1]
 Nh = torch.tensor(f['W_10'], device=device).shape[0]
 lr_W1 = 0.01

@@ -37,6 +37,7 @@ args = parser.parse_args()
 
 device = torch.device(torch.device(
     'cuda' if torch.cuda.is_available() else 'cpu'))
+# device = torch.device("cpu")
 dtype = torch.float
 
 dim = 100
@@ -123,7 +124,7 @@ elif args.data_gen == 0:
     centers = 0
 elif args.data_gen == 2:
     data_t = "YEAST"
-#    X = torch.tensor(torch.load(path+"../data/yeast.pt"), device = device, dtype = dtype)
+    X = torch.tensor(torch.load(path+"../data/yeast.pt"), device = device, dtype = dtype)
     centers = 0
 else :
     data_t = "CLEAN MNIST"

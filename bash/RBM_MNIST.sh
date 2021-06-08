@@ -2,14 +2,14 @@
 
 mode=0
 var_set=1
-reg=100
+reg=1000
 gen_mult=0
-lr=0.1
+lr=0.001
 Ngibbs=50
 Nmb=100
 Nh=500
 data_gen=0
-ep_max=1000
+ep_max=5000
 Nh=500
 data_gen=5
 
