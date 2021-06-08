@@ -27,4 +27,4 @@ def genGaussianData(dim, Nsample, l_cube, var):
     f.create_dataset('data', data = X.cpu())
     f.close()
 
-    print('saved at 'path+'data/' + fname)
+    print('saved at '+path+'data/' + fname)

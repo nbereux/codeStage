@@ -121,10 +121,18 @@ elif args.data_gen == 0:
     train_set, _, _ = p
     X = torch.as_tensor(train_set[0][:10000,:].T, device = device, dtype = dtype)
     centers = 0
-else:
+elif args.data_gen == 2:
     data_t = "YEAST"
-    X = torch.tensor(torch.load(path+"../data/yeast.pt"), device = device, dtype = dtype)
+#    X = torch.tensor(torch.load(path+"../data/yeast.pt"), device = device, dtype = dtype)
     centers = 0
+else :
+    data_t = "CLEAN MNIST"
+    dataFile = path+"../data/cleanMNIST10000.h5"
+    dataf = h5py.File(dataFile, 'r')
+    X = torch.tensor(dataf['clean'], device = device)
+    print(X.shape)
+    X = X/torch.std(X,1).reshape(X.shape[0],1)
+    centers=0
 Nv = X.shape[0]  # numbder of visible nodes
 
 

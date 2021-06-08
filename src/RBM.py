@@ -185,6 +185,10 @@ class GBRBM:
         if not(self.var_set):
             self.sigV = torch.std(X, dim=1)
         for t in range(ep_max):
+            ffname = "../data/cleanMNIST10000.h5"
+            ff = h5py.File(ffname, 'r')
+            var_rm = ff['id_col']
+            data_mnist = ff['original']
             print("IT ", self.ep_tot)
             self.ep_tot += 1
             Xp = X[:, torch.randperm(X.size()[1])]
@@ -202,11 +206,20 @@ class GBRBM:
                         (self.Nv, 10), device=self.device, dtype=self.dtype))
                     
                     tmp, _, _, _ = self.Sampling(vinit, it_mcmc=self.gibbs_steps)
+                    rebuiltMNIST = torch.zeros(data_mnist.shape[0], tmp.shape[1], device = self.device)
+                    passed = 0
+                    for i in range(data_mnist.shape[0]):
+                        if np.isin(i, var_rm):
+                            rebuiltMNIST[i, :] = torch.zeros(rebuiltMNIST[i, :].shape)
+                            passed +=1
+                        else :
+                            rebuiltMNIST[i, :] = tmp[i-passed, :]
                     fig, ax = plt.subplots(1, tmp.shape[1])
                     for i in range(tmp.shape[1]):
-                        ax[i].imshow(tmp[:,i].view(28,28).cpu())
+                        ax[i].imshow(rebuiltMNIST[:,i].view(28,28).cpu())
+                    
                     plt.savefig("../tmp/ep"+str(self.ep_tot)+".png")
-
+                    plt.close()
                     f = h5py.File('../model/AllParameters' +
                                   self.file_stamp+'.h5', 'a')
                     print('Saving nb_upd='+str(self.up_tot))
