@@ -77,7 +77,8 @@ class GBRBM:
         #mh = torch.where(mh > 1, torch.ones(mh.shape, device = self.device), mh)
         if torch.sum(torch.isnan(mh))!=0:
             print(t)
-            print(self.W_2)
+            print('W1 ',torch.isnan(self.W_1).sum())
+            print('W2 ',torch.isnan(self.W_2).sum())
 
         #print(test)
         h = torch.bernoulli(mh)
