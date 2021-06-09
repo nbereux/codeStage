@@ -9,7 +9,7 @@ Ngibbs=100
 Nmb=100
 Nh=500
 data_gen=0
-ep_max=5000
+ep_max=10000
 Nh=500
 data_gen=5
 

@@ -158,8 +158,8 @@ if args.mode == 0:
     print("TRAIN")
     #myRBM.SetVisBias(X)  # initialize the visible biases
     myRBM.ResetPermChainBatch = True  # Put False for PCD, False give Rdm
-    stamp = 'GBRBM_NGibbs_'+data_t+'_'+str(NGibbs)+'_Nh'+str(Nh)+'_Ns' + \
-        str(Nsample)+'_Nmb'+str(n_mb)+'_'+varfold+'_'+divfold+'_'+nb_genfold+'_lr_'+str(lr)
+    stamp = 'GBRBM_NGibbs_'+str(NGibbs)+'_'+data_t+'_Nh'+str(Nh)+'_Ns' + \
+        str(Nsample)+'_Nmb'+str(n_mb)+'_Nepoch'+str(ep_max)+'_'+varfold+'_'+divfold+'_'+nb_genfold+'_lr_'+str(lr)
     myRBM.file_stamp = stamp	
     base = 1.7
     v = np.array([0,1],dtype=int)
