@@ -2,7 +2,7 @@
 
 mode=0
 var_set=1
-reg=1000
+reg=100
 gen_mult=0
 lr=0.01
 Ngibbs=100
