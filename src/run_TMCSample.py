@@ -119,8 +119,9 @@ for it in range(len(it_mc)):
     N = 10000
     for i in range(len(w_hat)):
         print(i)
-        tmpv, tmph, vtab = TMCSample(start, w_hat[i], N, V0, it_mcmc=it_mc[i])
-        y.append(torch.mean(torch.dot(vtab[:, -it_mean[i]].T.cpu(), V0.cpu())))
+        tmpv, tmph, vtab = TMCSample(start, w_hat[i], N, V0, it_mcmc=it_mc[it])
+        y.append(torch.mean(
+            torch.dot(vtab[:, -it_mean[it]].T.cpu(), V0.cpu())))
     y = np.array(y)/myRBM.Nv**0.5
     res = np.zeros(len(w_hat)-1)
     print(simps(y-w_hat.numpy(), w_hat.numpy()))
@@ -144,5 +145,5 @@ for it in range(len(it_mc)):
     # plt.hist(proj_data[:,0].numpy(), label = 'data', density=True, bins=100)
     plt.xlabel("w_hat")
     plt.legend()
-    plt.savefig('../fig/TMC_IT_'+str(it_mc[i])+'_'+str(it_mean[i])+'.png')
+    plt.savefig('../fig/TMC_IT_'+str(it_mc[it])+'_'+str(it_mean[it])+'.png')
     plt.close()
