@@ -120,8 +120,7 @@ for it in range(len(it_mc)):
     for i in range(len(w_hat)):
         print(i)
         tmpv, tmph, vtab = TMCSample(start, w_hat[i], N, V0, it_mcmc=it_mc[it])
-        y.append(torch.mean(
-            torch.dot(vtab[:, -it_mean[it]].T.cpu(), V0.cpu())))
+        y.append(torch.mean(torch.dot(vtab[:, it_mean[it]].T.cpu(), V0.cpu())))
     y = np.array(y)/myRBM.Nv**0.5
     res = np.zeros(len(w_hat)-1)
     print(simps(y-w_hat.numpy(), w_hat.numpy()))
@@ -159,5 +158,5 @@ for it in range(len(it_mc)):
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     ax1.legend()
     ax2.legend()
-    plt.savefig("TMC_IT_"+str(it_mc[it])+"_"+str(it_mean[it])+".png")
+    plt.savefig("../fig/TMC_IT_"+str(it_mc[it])+"_"+str(it_mean[it])+".png")
     plt.close()
