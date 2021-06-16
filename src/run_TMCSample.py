@@ -11,7 +11,7 @@ sys.path.insert(1, '/home/nicolas/code/data')
 
 device = torch.device("cuda")
 dtype = torch.float
-torch.set_num_threads(4)
+torch.set_num_threads(12)
 
 
 def TMCSample(v, w_hat, N, V, it_mcmc=100, ß=1):
@@ -108,8 +108,8 @@ start_points = torch.bernoulli(torch.rand(myRBM.Nv, 1000, device=device))
 arrival, _, _, _ = myRBM.Sampling(start_points, it_mcmc=1000)
 proj_gen = torch.mm(arrival.T, V).cpu()/myRBM.Nv**0.5
 
-it_mean = [90, 350, 1500]
-it_mc = [100, 400, 1600]
+it_mean = [5, 90, 350, 1500]
+it_mc = [10, 100, 400, 1600]
 for it in range(len(it_mc)):
     start = torch.bernoulli(torch.rand(myRBM.Nv, 1, device=device))
     V0 = V[:, 0]
@@ -144,5 +144,5 @@ for it in range(len(it_mc)):
     # plt.hist(proj_data[:,0].numpy(), label = 'data', density=True, bins=100)
     plt.xlabel("w_hat")
     plt.legend()
-    plt.savefig('../fig/TMC_IT_'+str(it))
+    plt.savefig('../fig/TMC_IT_'+str(it_mc[i])+'_'+str(it_mean[i])+'.png')
     plt.close()
