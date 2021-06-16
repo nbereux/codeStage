@@ -21,6 +21,7 @@ def TMCSample(v, w_hat, N, V, it_mcmc=100, ß=1):
     V = V.cpu()
     norm = 1/(v_curr.shape[0]**0.5)
     w_curr = (torch.dot(v_curr[:, 0], V)*norm).item()
+    h_curr, _ = myRBM.SampleHiddens01(v_curr.cuda())
 
     # print(w_curr)
     for t in range(it_mcmc):
