@@ -127,23 +127,37 @@ for it in range(len(it_mc)):
     print(simps(y-w_hat.numpy(), w_hat.numpy()))
     for i in range(1, len(w_hat)):
         res[i-1] = simps(y[:i]-w_hat[:i].numpy(), w_hat[:i].numpy())
-    const = 1/res[-1]
-    p_m = np.exp(N*res)*const
-    potential = res + (1/N)*np.log(res[-1])
+    const = simps(np.exp(N*res), w_hat[:len(w_hat)-1].numpy())
+    p_m = np.exp(N*res)/const
+    potential = res + (1/N)*np.log(const)
     #plt.plot(w_hat[1:], potential)
-    plt.plot(w_hat[1:], res)
-
+    #plt.plot(w_hat[1:], res)
+    #plt.plot(w_hat[1:], p_m)
+    #print(simps(p_m, w_hat[:len(w_hat)-1]))
     proj_data = torch.mm(torch.tensor(data, device=device,
                                       dtype=dtype), V).cpu()/myRBM.Nv**0.5
-    plt.figure(dpi=200)
-    plt.plot(w_hat[1:], potential, color="green", label="potential")
-    plt.plot(w_hat, y-w_hat.numpy(), color='red', label="grad potential")
-    plt.hlines(0, 0, 1, color='black')
-    plt.scatter(proj_gen[:, 0], proj_gen[:, 1], alpha=0.2, label='data_gen')
+    fig, ax1 = plt.subplots(dpi=200)
+
+    color = 'tab:red'
+    ax1.set_xlabel("w_hat")
+    #ax1.set_ylabel('exp', color=color)
+    ax1.plot(w_hat, y-w_hat.numpy(), color='red', label="grad potential")
+    ax1.hlines(0, 0, 1, color='black')
+    #ax1.scatter(proj_gen[:,0], proj_gen[:,1],alpha=0.2, label = 'data_gen')
+
+    ax1.tick_params(axis='y', labelcolor=color)
+
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+    color = 'tab:blue'
     rdm_y = torch.randn(proj_data[:, 0].shape)/20
-    # plt.plot(proj_data[:,0],rdm_y,'o',markersize=1,alpha=0.3)
-    # plt.hist(proj_data[:,0].numpy(), label = 'data', density=True, bins=100)
-    plt.xlabel("w_hat")
-    plt.legend()
-    plt.savefig('../fig/TMC_IT_'+str(it_mc[it])+'_'+str(it_mean[it])+'.png')
+    ax2.hist(proj_data[:, 0].numpy(), label='data', density=True, bins=100)
+    ax2.plot(w_hat[1:], p_m, color="green", label="prob")
+
+    ax2.tick_params(axis='y', labelcolor=color)
+
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    ax1.legend()
+    ax2.legend()
+    plt.savefig("TMC_IT_"+str(it_mc[it])+"_"+str(it_mean[it])+".png")
     plt.close()
