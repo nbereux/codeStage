@@ -95,7 +95,7 @@ myRBM = RBM(num_visible=Nv,
             gibbs_steps=NGibbs,
             # anneal_steps=annSteps,
             UpdCentered=True,
-            mb_self=mb_s,
+            # mb_self=mb_s,
             num_pcd=num_pcd)
 
 myRBM.W = torch.tensor(4*W).float().cuda()
