@@ -119,8 +119,8 @@ for it in range(len(it_mc)):
     N = 10000
     for i in range(len(w_hat)):
         print(i)
-        tmpv, tmph, vtab = TMCSample(start, w_hat[i], N, V0, it_mcmc=it)
-        y.append(torch.mean(torch.dot(vtab[:, -60].T.cpu(), V0.cpu())))
+        tmpv, tmph, vtab = TMCSample(start, w_hat[i], N, V0, it_mcmc=it_mc[i])
+        y.append(torch.mean(torch.dot(vtab[:, -it_mean[i]].T.cpu(), V0.cpu())))
     y = np.array(y)/myRBM.Nv**0.5
     res = np.zeros(len(w_hat)-1)
     print(simps(y-w_hat.numpy(), w_hat.numpy()))
