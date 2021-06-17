@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import torch
 import sys
 import time
+import h5py
 sys.path.insert(1, '/home/nicolas/code/src')
 sys.path.insert(1, '/home/nicolas/code/data')
 
@@ -103,10 +104,12 @@ myRBM.W = torch.tensor(4*W).float().cuda()
 myRBM.vbias = torch.tensor(2*vbias - 2*W.sum(0)).float().to(device)
 myRBM.hbias = torch.tensor(2*hbias - 2*W.sum(1)).float().to(device)
 U, S, V = torch.svd(torch.tensor(4*W).float().cuda())
-
+V = -V
 start_points = torch.bernoulli(torch.rand(myRBM.Nv, 1000, device=device))
 arrival, _, _, _ = myRBM.Sampling(start_points, it_mcmc=1000)
 proj_gen = torch.mm(arrival.T, V).cpu()/myRBM.Nv**0.5
+
+
 
 it_mean = [5, 90, 350, 1500]
 it_mc = [10, 100, 400, 1600]
@@ -114,7 +117,7 @@ for it in range(len(it_mc)):
     start = torch.bernoulli(torch.rand(myRBM.Nv, 1, device=device))
     V0 = V[:, 0]
     # w_hat = torch.dot(start.T, V)[0:,]
-    w_hat = torch.linspace(0, 1, steps=100)
+    w_hat = torch.linspace(-0.2, 1.2, steps=140)
     y = []
     N = 10000
     for i in range(len(w_hat)):
@@ -122,6 +125,7 @@ for it in range(len(it_mc)):
         tmpv, tmph, vtab = TMCSample(start, w_hat[i], N, V0, it_mcmc=it_mc[it])
         y.append(torch.mean(torch.dot(vtab[:, it_mean[it]].T.cpu(), V0.cpu())))
     y = np.array(y)/myRBM.Nv**0.5
+    #y = (y-min(y))/(max(y)-min(y))     
     res = np.zeros(len(w_hat)-1)
     print(simps(y-w_hat.numpy(), w_hat.numpy()))
     for i in range(1, len(w_hat)):
@@ -135,6 +139,16 @@ for it in range(len(it_mc)):
     #print(simps(p_m, w_hat[:len(w_hat)-1]))
     proj_data = torch.mm(torch.tensor(data, device=device,
                                       dtype=dtype), V).cpu()/myRBM.Nv**0.5
+
+    fname = "../data/TMC_IT_"+str(it_mc[it])+"_"+str(it_mean[it])+".h5"
+
+    f = h5py.File(fname, 'w')
+    f.create_dataset('proj_data', data = proj_data)
+    f.create_dataset('y', data =y)
+    f.create_dataset('p_m', data = p_m)
+    f.create_dataset('w_hat', data = w_hat)
+    f.close()
+    
     fig, ax1 = plt.subplots(dpi=200)
 
     color = 'tab:red'
