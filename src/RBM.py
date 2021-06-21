@@ -700,7 +700,7 @@ class RBM:
             f.create_dataset('alltime', data=self.list_save_rbm)
             f.close()
 
-            _, S_d, _ = torch.svd(X)
+        _, S_d, _ = torch.svd(X)
         for t in range(ep_max):
             print("IT ", self.ep_tot)
             self.ep_tot += 1
