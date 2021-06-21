@@ -725,15 +725,15 @@ class RBM:
                     f.create_dataset('hbias'+str(self.up_tot),
                                      data=self.hbias.cpu())
                     f.close()
+                    _, S, _ = torch.svd(self.W)
+                    plt.plot(S.cpu(), label="W")
+                    plt.plot(S_d.cpu(), label="data")
+                    plt.semilogy()
+                    plt.legend()
+                    plt.savefig("../tmp/TMCeig"+str(self.up_tot)+".png")
+                    plt.close()
 
                 self.up_tot += 1
-                _, S, _ = torch.svd(self.W)
-                plt.plot(S.cpu(), label="W")
-                plt.plot(S_d.cpu(), label="data")
-                plt.semilogy()
-                plt.legend()
-                plt.savefig("../tmp/TMCeig"+str(self.up_tot)+".png")
-                plt.close()
 
             if self.ep_tot in self.list_save_rbm:
                 f = h5py.File('models/RBM'+self.file_stamp+'.h5', 'a')
