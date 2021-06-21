@@ -700,6 +700,7 @@ class RBM:
             f.create_dataset('alltime', data=self.list_save_rbm)
             f.close()
 
+            _, S_d, _ = torch.svd(X).cpu()
         for t in range(ep_max):
             print("IT ", self.ep_tot)
             self.ep_tot += 1
@@ -726,6 +727,13 @@ class RBM:
                     f.close()
 
                 self.up_tot += 1
+                _, S, _ = torch.svd(self.W).cpu()
+                plt.plot(S, label="W")
+                plt.plot(S_d, label="data")
+                plt.semilogy()
+                plt.legend()
+                plt.savefig("../tmp/TMCeig"+str(self.up_tot)+".png")
+                plt.close()
 
             if self.ep_tot in self.list_save_rbm:
                 f = h5py.File('models/RBM'+self.file_stamp+'.h5', 'a')
