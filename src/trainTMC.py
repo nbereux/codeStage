@@ -23,7 +23,7 @@ mb_s = 600
 num_pcd = 100
 Nh = 20
 Nv = data.shape[1]
-ep_max = 10
+ep_max = 100
 w_hat = torch.linspace(0, 1, steps=100)
 _, _, V = torch.svd(data)
 V = V[:, 0]
