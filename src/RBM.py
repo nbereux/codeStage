@@ -654,8 +654,9 @@ class RBM:
             res = np.zeros(len(w_hat_b)-1)
             for i in range(1, len(w_hat_b)):
                 res[i-1] = simps(newy[:i]-w_hat_b_np[:i], w_hat_b_np[:i])
-            const = simps(np.exp(N*res), w_hat_b_np[:-1])
-            p_m = torch.tensor(np.exp(N*res)/const, device=self.device)
+            const = simps(np.exp(N*res-np.max(N*res)), w_hat_b_np[:-1])
+            p_m = torch.tensor(np.exp(N*res-np.max(N*res)) /
+                               const, device=self.device)
             s_i = torch.stack([torch.mean(
                 tmpv[:, i*nb_chain:i*nb_chain+nb_chain], dim=1) for i in range(nb_point)], 1)
             tau_a = torch.stack([torch.mean(
