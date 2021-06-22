@@ -617,7 +617,7 @@ class RBM:
             self.X_pc = X
             self.X_pc, _, h_neg_v, h_neg_m = self.GetAv()
         elif self.TMCLearning:
-            time_start = time.time()
+            #time_start = time.time()
             nb_chain = 15  # Nb de chaines pour chaque w_hat
             it_mcmc = 50  # Nb it_mcmc pour chaque chaine
             it_mean = 30  # Nb it considérée pour la moyenne temporelle de chaque chaine
@@ -659,7 +659,7 @@ class RBM:
                 tabtau_a[:, i] = torch.trapz(
                     tau_a[:, :i]*p_m[:i], torch.tensor(w_hat_b, device=self.device)[:i], dim=1)
             prod = torch.mm(tabtau_a, tabs_i.T)
-            print(time.time() - time_start)
+            #print(time.time() - time_start)
 
         else:
             self.X_pc, _, h_neg_v, h_neg_m = self.GetAv()
