@@ -653,6 +653,10 @@ class RBM:
                 tmph[:, i*nb_chain:i*nb_chain+nb_chain], dim=1) for i in range(nb_point)], 1)
             tabs_i = torch.zeros(self.Nv, nb_point-1, device=self.device)
             tabtau_a = torch.zeros(self.Nh, nb_point-1, device=self.device)
+            tabprod = torch.zeros(
+                tabs_i.shape[0], tabtau_a.shape[0], tabs_i.shape[1], device=self.device)
+            for i in range(tabprod.shape[2]):
+                tabprod[:, :, i] = torch.mm(tabs_i[:, i], tabtau_a[:, i].T)
             for i in range(1, s_i.shape[1]-1):
                 tabs_i[:, i] = torch.trapz(
                     s_i[:, :i]*p_m[:i], torch.tensor(w_hat_b, device=self.device)[:i], dim=1)
@@ -668,7 +672,7 @@ class RBM:
             self.updateWeightsCentered(
                 X, h_pos_v, h_pos_m, self.X_pc, h_neg_v, h_neg_m)
         else:
-            self.updateWeights(X, h_pos_m, s_i, tau_a, prod)
+            self.updateWeights(X, h_pos_m, tabs_i, tabtau_a, tabprod)
 
     def getMiniBatches(self, X, m):
         return X[:, m*self.mb_s:(m+1)*self.mb_s]
