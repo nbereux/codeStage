@@ -686,12 +686,12 @@ class RBM:
         # self.HidDataAv = torch.mean(h_av,1)
 
         if (len(self.list_save_time) > 0) & (self.up_tot == 0):
-            f = h5py.File('models/AllParameters'+self.file_stamp+'.h5', 'w')
+            f = h5py.File('../model/AllParameters'+self.file_stamp+'.h5', 'w')
             f.create_dataset('alltime', data=self.list_save_time)
             f.close()
 
         if (len(self.list_save_rbm) > 0) & (self.ep_tot == 0):
-            f = h5py.File('models/RBM'+self.file_stamp+'.h5', 'w')
+            f = h5py.File('../model/RBM'+self.file_stamp+'.h5', 'w')
             f.create_dataset('lr', data=self.lr)
             f.create_dataset('NGibbs', data=self.gibbs_steps)
             f.create_dataset('UpdByEpoch', data=NB)
@@ -716,7 +716,7 @@ class RBM:
                 self.fit_batch(Xb)
 
                 if self.up_tot in self.list_save_time:
-                    f = h5py.File('models/AllParameters' +
+                    f = h5py.File('../model/AllParameters' +
                                   self.file_stamp+'.h5', 'a')
                     print('Saving nb_upd='+str(self.up_tot))
                     f.create_dataset('W'+str(self.up_tot), data=self.W.cpu())
@@ -736,7 +736,7 @@ class RBM:
                 self.up_tot += 1
 
             if self.ep_tot in self.list_save_rbm:
-                f = h5py.File('models/RBM'+self.file_stamp+'.h5', 'a')
+                f = h5py.File('../model/RBM'+self.file_stamp+'.h5', 'a')
                 f.create_dataset('W'+str(self.ep_tot), data=self.W.cpu())
                 f.create_dataset('vbias'+str(self.ep_tot),
                                  data=self.vbias.cpu())

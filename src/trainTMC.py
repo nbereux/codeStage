@@ -29,6 +29,7 @@ _, _, V = torch.svd(data)
 V = V[:, 0]
 N = 20000
 it_mean = 50
+fq_msr_RBM = 1000
 
 myRBM = RBM(num_visible=Nv,
             num_hidden=Nh,
@@ -45,4 +46,27 @@ myRBM = RBM(num_visible=Nv,
             TMCLearning=True
             )
 
+stamp = 'GBRBM_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Ns' + \
+    str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr)
+myRBM.file_stamp = stamp	
+base = 1.7
+v = np.array([0,1],dtype=int)
+allm = np.append(np.array(0),base**np.array(list(range(30))))
+for k in range(30):
+    for m in allm:
+        v = np.append(v,int(base**k)+int(m)) 
+v = np.array(list(set(v)))
+v = np.sort(v)
+myRBM.list_save_time = v
+
+v = np.array(list(set(v)))
+v = np.sort(v)
+myRBM.list_save_time = v
+myRBM.list_save_rbm = np.arange(1, ep_max, fq_msr_RBM)
+
+fq_msr_RBM = 1000
+myRBM.list_save_rbm = np.arange(1,ep_max,fq_msr_RBM)
+
 myRBM.fit(data.T, ep_max)
+print("model updates saved at " + "../model/AllParameters"+stamp+".h5")
+print("model saved at " +"../model/RBM"+stamp+".h5")
