@@ -564,7 +564,15 @@ class RBM:
         vtab = vtab*(1/it_mean)
         return v_curr, h_curr, vtab
 
+    def updateWeightsTMC(self, v_pos, h_pos, negTermV, negTermH, negTermW):
+        lr_p = self.lr/self.mb_s
+
+        self.W += h_pos.mm(v_pos.t())*lr_p - negTermW*self.lr
+        self.vbias += torch.sum(v_pos, 1)*lr_p - negTermV*self.lr
+        self.hbias += torch.sum(h_pos, 1)*lr_p - negTermH*self.lr
+
     # Update weights and biases
+
     def updateWeights(self, v_pos, h_pos, v_neg, h_neg_v, h_neg_m):
 
         lr_p = self.lr/self.mb_s
@@ -576,7 +584,7 @@ class RBM:
         self.W += h_pos.mm(v_pos.t())*lr_p - NegTerm_ia*lr_n
         self.vbias += torch.sum(v_pos, 1)*lr_p - torch.sum(v_neg, 1)*lr_n
         self.hbias += torch.sum(h_pos, 1)*lr_p - \
-            torch.mean(torch.sum(h_neg_m, 1), dim=1)*lr_n
+            torch.sum(h_neg_m, 1)*lr_n
 
     # Update weights and biases
     def updateWeightsCentered(self, v_pos, h_pos_v, h_pos_m, v_neg, h_neg_v, h_neg_m, ν=0.2, ε=0.01):
@@ -642,33 +650,28 @@ class RBM:
             newy = np.array([np.mean(y[i*nb_chain:i*nb_chain+nb_chain])
                              for i in range(nb_point)])
             w_hat = w_hat.cpu().numpy()
-            w_hat_b = w_hat_b.cpu().numpy()
+            w_hat_b_np = w_hat_b.cpu().numpy()
             res = np.zeros(len(w_hat_b)-1)
             for i in range(1, len(w_hat_b)):
-                res[i-1] = simps(newy[:i]-w_hat_b[:i], w_hat_b[:i])
-            const = simps(np.exp(N*res), w_hat_b[:-1])
+                res[i-1] = simps(newy[:i]-w_hat_b_np[:i], w_hat_b_np[:i])
+            const = simps(np.exp(N*res), w_hat_b_np[:-1])
             p_m = torch.tensor(np.exp(N*res)/const, device=self.device)
             s_i = torch.stack([torch.mean(
                 tmpv[:, i*nb_chain:i*nb_chain+nb_chain], dim=1) for i in range(nb_point)], 1)
             tau_a = torch.stack([torch.mean(
                 tmph[:, i*nb_chain:i*nb_chain+nb_chain], dim=1) for i in range(nb_point)], 1)
-            tabs_i = torch.zeros(self.Nv, nb_point-1, device=self.device)
-            tabtau_a = torch.zeros(self.Nh, nb_point-1, device=self.device)
-            prod = torch.zeros(
-                (tabtau_a.shape[0], tabs_i.shape[0], s_i.shape[1]), device=self.device)
-            tabprod = torch.zeros(
-                (tabtau_a.shape[0], tabs_i.shape[0], s_i.shape[1]-1), device=self.device)
+            s_i = torch.trapz(s_i[:, 1:]*p_m, w_hat_b[1:], dim=1)
+            tau_a = torch.trapz(tau_a[:, 1:]*p_m, w_hat_b[1:], dim=1)
 
-            for i in range(prod.shape[2]):
-                prod[:, :, i] = torch.outer(tau_a[:, i], s_i[:, i])
-            for k in range(1, s_i.shape[1]-1):
-                tabs_i[:, k] = torch.trapz(
-                    s_i[:, :k]*p_m[:k], torch.tensor(w_hat_b, device=self.device)[:k], dim=1)
-                tabtau_a[:, k] = torch.trapz(
-                    tau_a[:, :k]*p_m[:k], torch.tensor(w_hat_b, device=self.device)[:k], dim=1)
-                tabprod[:, :, k] = torch.trapz(
-                    prod[:, :, :k]*p_m[:k], torch.tensor(w_hat_b, device=self.device)[:k], dim=2)
-                # print(time.time() - time_start)
+            prod = torch.zeros(
+                (self.Nv, self.Nh, nb_point*nb_chain), device=self.device)
+            for i in range(tmpv.shape[1]):
+                prod[:, :, i] = torch.outer(tmpv[:, i], tmph[:, i])
+            prod = torch.stack([torch.mean(
+                prod[:, :, i*nb_chain:i*nb_chain+nb_chain], dim=2) for i in range(nb_point)], 2)
+            prod = torch.trapz(prod[:, :, 1:]*p_m, w_hat_b[1:], dim=2)
+
+            # print(time.time() - time_start)
 
         else:
             self.X_pc, _, h_neg_v, h_neg_m = self.GetAv()
@@ -677,7 +680,7 @@ class RBM:
             self.updateWeightsCentered(
                 X, h_pos_v, h_pos_m, self.X_pc, h_neg_v, h_neg_m)
         else:
-            self.updateWeights(X, h_pos_m, tabs_i, tabtau_a, tabprod)
+            self.updateWeightsTMC(X, h_pos_m, s_i, tau_a, prod.T)
 
     def getMiniBatches(self, X, m):
         return X[:, m*self.mb_s:(m+1)*self.mb_s]
@@ -709,7 +712,7 @@ class RBM:
             f.create_dataset('alltime', data=self.list_save_rbm)
             f.close()
 
-        _, S_d, _ = torch.svd(X)
+        _, S_d, _ = torch.svd(X/np.sqrt(X.shape[1]))
         for t in range(ep_max):
             print("IT ", self.ep_tot)
             self.ep_tot += 1
