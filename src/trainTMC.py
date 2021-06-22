@@ -16,7 +16,7 @@ data = np.genfromtxt('../data/data_1d2c_bal_seed14.dat')
 data = torch.tensor((data+1)/2, device=device, dtype=dtype)
 
 
-lr = 0.01
+lr = 0.1
 NGibbs = 100
 annSteps = 0
 mb_s = 600
@@ -46,7 +46,7 @@ myRBM = RBM(num_visible=Nv,
             TMCLearning=True
             )
 
-stamp = 'GBRBM_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Ns' + \
+stamp = 'TMC_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Ns' + \
     str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr)
 myRBM.file_stamp = stamp	
 base = 1.7
@@ -68,5 +68,5 @@ fq_msr_RBM = 1000
 myRBM.list_save_rbm = np.arange(1,ep_max,fq_msr_RBM)
 
 myRBM.fit(data.T, ep_max)
-print("model updates saved at " + "../model/AllParameters"+stamp+".h5")
+print("model updates saved at " + "../model/TMC"+stamp+".h5")
 print("model saved at " +"../model/RBM"+stamp+".h5")
