@@ -575,7 +575,8 @@ class RBM:
 
         self.W += h_pos.mm(v_pos.t())*lr_p - NegTerm_ia*lr_n
         self.vbias += torch.sum(v_pos, 1)*lr_p - torch.sum(v_neg, 1)*lr_n
-        self.hbias += torch.sum(h_pos, 1)*lr_p - torch.sum(h_neg_m, 1)*lr_n
+        self.hbias += torch.sum(h_pos, 1)*lr_p - \
+            torch.mean(torch.sum(h_neg_m, 1), dim=1)*lr_n
 
     # Update weights and biases
     def updateWeightsCentered(self, v_pos, h_pos_v, h_pos_m, v_neg, h_neg_v, h_neg_m, ν=0.2, ε=0.01):
@@ -617,7 +618,7 @@ class RBM:
             self.X_pc = X
             self.X_pc, _, h_neg_v, h_neg_m = self.GetAv()
         elif self.TMCLearning:
-            #time_start = time.time()
+            # time_start = time.time()
             nb_chain = 15  # Nb de chaines pour chaque w_hat
             it_mcmc = 50  # Nb it_mcmc pour chaque chaine
             it_mean = 30  # Nb it considérée pour la moyenne temporelle de chaque chaine
@@ -653,17 +654,21 @@ class RBM:
                 tmph[:, i*nb_chain:i*nb_chain+nb_chain], dim=1) for i in range(nb_point)], 1)
             tabs_i = torch.zeros(self.Nv, nb_point-1, device=self.device)
             tabtau_a = torch.zeros(self.Nh, nb_point-1, device=self.device)
+            prod = torch.zeros(
+                (tabtau_a.shape[0], tabs_i.shape[0], s_i.shape[1]), device=self.device)
             tabprod = torch.zeros(
-                tabs_i.shape[0], tabtau_a.shape[0], tabs_i.shape[1], device=self.device)
-            for i in range(tabprod.shape[2]):
-                tabprod[:, :, i] = torch.mm(tabs_i[:, i], tabtau_a[:, i].T)
-            for i in range(1, s_i.shape[1]-1):
-                tabs_i[:, i] = torch.trapz(
-                    s_i[:, :i]*p_m[:i], torch.tensor(w_hat_b, device=self.device)[:i], dim=1)
-                tabtau_a[:, i] = torch.trapz(
-                    tau_a[:, :i]*p_m[:i], torch.tensor(w_hat_b, device=self.device)[:i], dim=1)
-            prod = torch.mm(tabtau_a, tabs_i.T)
-            #print(time.time() - time_start)
+                (tabtau_a.shape[0], tabs_i.shape[0], s_i.shape[1]-1), device=self.device)
+
+            for i in range(prod.shape[2]):
+                prod[:, :, i] = torch.outer(tau_a[:, i], s_i[:, i])
+            for k in range(1, s_i.shape[1]-1):
+                tabs_i[:, k] = torch.trapz(
+                    s_i[:, :k]*p_m[:k], torch.tensor(w_hat_b, device=self.device)[:k], dim=1)
+                tabtau_a[:, k] = torch.trapz(
+                    tau_a[:, :k]*p_m[:k], torch.tensor(w_hat_b, device=self.device)[:k], dim=1)
+                tabprod[:, :, k] = torch.trapz(
+                    prod[:, :, :k]*p_m[:k], torch.tensor(w_hat_b, device=self.device)[:k], dim=2)
+                # print(time.time() - time_start)
 
         else:
             self.X_pc, _, h_neg_v, h_neg_m = self.GetAv()
