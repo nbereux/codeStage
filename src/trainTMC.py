@@ -16,7 +16,7 @@ data = np.genfromtxt('../data/data_1d2c_bal_seed14.dat')
 data = torch.tensor((data+1)/2, device=device, dtype=dtype)
 
 
-lr = 0.1
+lr = 0.01
 NGibbs = 100
 annSteps = 0
 mb_s = 600
@@ -48,7 +48,7 @@ myRBM = RBM(num_visible=Nv,
 
 stamp = 'TMC_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Ns' + \
     str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr)
-myRBM.file_stamp = stamp	
+myRBM.file_stamp = stamp
 base = 1.7
 v = np.array([0,1],dtype=int)
 allm = np.append(np.array(0),base**np.array(list(range(30))))
