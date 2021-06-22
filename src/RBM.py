@@ -736,7 +736,7 @@ class RBM:
                     f.close()
                     _, S, _ = torch.svd(self.W)
                     plt.plot(S.cpu(), label="W")
-                    plt.plot(S_d.cpu(), label="data")
+                    plt.plot(S_d.cpu()[:len(S)], label="data")
                     plt.semilogy()
                     plt.legend()
                     plt.savefig("../tmp/TMCeig"+str(self.up_tot)+".png")
