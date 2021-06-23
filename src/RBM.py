@@ -628,15 +628,17 @@ class RBM:
         elif self.TMCLearning:
             # time_start = time.time()
             nb_chain = 15  # Nb de chaines pour chaque w_hat
-            it_mcmc = 50  # Nb it_mcmc pour chaque chaine
-            it_mean = 30  # Nb it considérée pour la moyenne temporelle de chaque chaine
+            it_mcmc = 25  # Nb it_mcmc pour chaque chaine
+            it_mean = 10  # Nb it considérée pour la moyenne temporelle de chaque chaine
             N = 20000  # Contrainte
             nb_point = 1000  # Nb de points de discrétisation pour w_hat
             xmin = -0.0
             xmax = 1.0
             start = torch.bernoulli(torch.rand(
                 self.Nv, nb_chain*nb_point, device=self.device))
-            V0 = self.V
+            
+            _, _, V0 = torch.svd(self.W)
+            V0 = V0[:,0]
             w_hat_b = torch.linspace(
                 xmin, xmax, steps=nb_point, device=self.device)
             w_hat = torch.zeros(nb_chain*nb_point, device=self.device)
@@ -743,7 +745,7 @@ class RBM:
                     plt.plot(S_d.cpu()[:len(S)], label="data")
                     plt.semilogy()
                     plt.legend()
-                    plt.savefig("../tmp/TMCeig"+str(self.up_tot)+".png")
+                    plt.savefig("../tmp2/TMCeig"+str(self.up_tot)+".png")
                     plt.close()
 
                 self.up_tot += 1
