@@ -566,7 +566,7 @@ class RBM:
 
     def updateWeightsTMC(self, v_pos, h_pos, negTermV, negTermH, negTermW):
         lr_p = self.lr/self.mb_s
-        lr_n = self.lr/10
+        lr_n = self.lr*10
         self.W += h_pos.mm(v_pos.t())*lr_p - negTermW*lr_n
         self.vbias += torch.sum(v_pos, 1)*lr_p - negTermV*lr_n
         self.hbias += torch.sum(h_pos, 1)*lr_p - negTermH*lr_n
