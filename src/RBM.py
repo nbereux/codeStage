@@ -566,10 +566,10 @@ class RBM:
 
     def updateWeightsTMC(self, v_pos, h_pos, negTermV, negTermH, negTermW):
         lr_p = self.lr/self.mb_s
-
-        self.W += h_pos.mm(v_pos.t())*lr_p - negTermW*self.lr
-        self.vbias += torch.sum(v_pos, 1)*lr_p - negTermV*self.lr
-        self.hbias += torch.sum(h_pos, 1)*lr_p - negTermH*self.lr
+        lr_n = self.lr/10
+        self.W += h_pos.mm(v_pos.t())*lr_p - negTermW*lr_n
+        self.vbias += torch.sum(v_pos, 1)*lr_p - negTermV*lr_n
+        self.hbias += torch.sum(h_pos, 1)*lr_p - negTermH*lr_n
 
     # Update weights and biases
 
@@ -636,9 +636,9 @@ class RBM:
             xmax = 1.0
             start = torch.bernoulli(torch.rand(
                 self.Nv, nb_chain*nb_point, device=self.device))
-            
+            # SVD des poids
             _, _, V0 = torch.svd(self.W)
-            V0 = V0[:,0]
+            V0 = V0[:, 0]
             w_hat_b = torch.linspace(
                 xmin, xmax, steps=nb_point, device=self.device)
             w_hat = torch.zeros(nb_chain*nb_point, device=self.device)
