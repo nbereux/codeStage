@@ -632,13 +632,14 @@ class RBM:
             it_mean = 10  # Nb it considérée pour la moyenne temporelle de chaque chaine
             N = 20000  # Contrainte
             nb_point = 1000  # Nb de points de discrétisation pour w_hat
-            xmin = -0.0
-            xmax = 1.0
             start = torch.bernoulli(torch.rand(
                 self.Nv, nb_chain*nb_point, device=self.device))
             # SVD des poids
             _, _, V0 = torch.svd(self.W)
             V0 = V0[:, 0]
+            proj_data = torch.mv(X, V0)
+            xmin = torch.min(proj_data)-0.2
+            xmax = torch.max(proj_data)+0.2
             w_hat_b = torch.linspace(
                 xmin, xmax, steps=nb_point, device=self.device)
             w_hat = torch.zeros(nb_chain*nb_point, device=self.device)
