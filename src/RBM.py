@@ -637,9 +637,9 @@ class RBM:
             # SVD des poids
             _, _, V0 = torch.svd(self.W)
             V0 = V0[:, 0]
-            proj_data = torch.mv(X.T, V0)
-            xmin = torch.min(proj_data)
-            if xmin<0:
+            # proj_data = torch.mv(X.T, V0)
+            # xmin = torch.min(proj_data)
+            if torch.mean(V0) < 0:
                 V0 = -V0
             xmin = 0
             xmax = 1
