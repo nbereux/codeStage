@@ -570,6 +570,12 @@ class RBM:
         self.W += h_pos.mm(v_pos.t())*lr_p - negTermW*lr_n
         self.vbias += torch.sum(v_pos, 1)*lr_p - negTermV*lr_n
         self.hbias += torch.sum(h_pos, 1)*lr_p - negTermH*lr_n
+        fname = '../data/valGradTMC.h5'
+        f = h5py.File(fname, 'w')
+        f.create_dataset('negTermW'+str(self.up_tot), data=negTermW)
+        f.create_dataset('negTermH'+str(self.up_tot), data=negTermH)
+        f.create_dataset('negTermV'+str(self.up_tot), data=negTermV)
+        f.close()
 
     # Update weights and biases
 
@@ -586,6 +592,14 @@ class RBM:
         self.hbias += torch.sum(h_pos, 1)*lr_p - \
             torch.sum(h_neg_m, 1)*lr_n
 
+        fname = '../data/valGradNorm.h5'
+        f = h5py.File(fname, 'w')
+        f.create_dataset('negTermW'+str(self.up_tot), data=NegTerm_ia)
+        f.create_dataset('negTermH'+str(self.up_tot),
+                         data=torch.sum(h_neg_m, 1))
+        f.create_dataset('negTermV'+str(self.up_tot), data=torch.sum(v_neg, 1))
+        f.close()
+
     # Update weights and biases
     def updateWeightsCentered(self, v_pos, h_pos_v, h_pos_m, v_neg, h_neg_v, h_neg_m, ν=0.2, ε=0.01):
 
@@ -598,8 +612,8 @@ class RBM:
         Xc_neg = (v_neg.t() - self.VisDataAv).t()
         Hc_neg = (h_neg_m.t() - self.HidDataAv).t()
 
-        NormPos = 1.0/self.mb_s
-        NormNeg = 1.0/self.num_pcd
+        NormPos=1.0/self.mb_s
+        NormNeg=1.0/self.num_pcd
         # NormL2 = self.regL2
 
         siτa_neg = Hc_neg.mm(Xc_neg.t())*NormNeg
