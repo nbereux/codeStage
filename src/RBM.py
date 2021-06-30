@@ -534,7 +534,7 @@ class RBM:
         # index = torch.randperm(v_curr.shape[0])
         for t in range(it_mcmc):
             # print(t)
-            h_curr, mh_curr = self.SampleHiddens01(v_curr)
+            h_curr, _ = self.SampleHiddens01(v_curr)
             h_i = (torch.mm(self.W.T, h_curr) +
                    self.vbias.reshape(v.shape[0], 1))  # Nv x Ns
             w_next = w_curr.clone()
@@ -653,10 +653,14 @@ class RBM:
             # SVD des poids
             _, _, V0 = torch.svd(self.W)
             V0 = V0[:, 0]
-            # proj_data = torch.mv(X.T, V0)
-            # xmin = torch.min(proj_data)
             if torch.mean(V0) < 0:
                 V0 = -V0
+            
+            # pour adapter la taille de l'intervalle discrétisé à chaque itération
+            # proj_data = torch.mv(X.T, V0)
+            # xmin = torch.min(proj_data) - 0.2
+            # xmax = torch.max(proj_data) + 0.2
+
             xmin = -1.5
             xmax = 1.5
             w_hat_b = torch.linspace(
@@ -667,11 +671,12 @@ class RBM:
                     w_hat[i*nb_chain+j] = w_hat_b[i]
             tmpv, tmph, vtab = self.TMCSample(
                 start, w_hat, N, V0, it_mcmc=it_mcmc, it_mean=it_mean)
+            
             y = np.array(torch.mm(vtab.T, V0.unsqueeze(1)
                                   ).cpu().squeeze())/self.Nv**0.5
             newy = np.array([np.mean(y[i*nb_chain:i*nb_chain+nb_chain])
                              for i in range(nb_point)])
-            w_hat = w_hat.cpu().numpy()
+            #w_hat_np = w_hat.cpu().numpy()
             w_hat_b_np = w_hat_b.cpu().numpy()
             res = np.zeros(len(w_hat_b)-1)
             for i in range(1, len(w_hat_b)):
