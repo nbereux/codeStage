@@ -23,7 +23,7 @@ mb_s = 600
 num_pcd = 600
 Nh = 20
 Nv = data.shape[1]
-ep_max = 1
+ep_max = 1000
 w_hat = torch.linspace(0, 1, steps=100)
 _, _, V = torch.svd(data)
 V = V[:, 0]
@@ -46,7 +46,7 @@ myRBM = RBM(num_visible=Nv,
             TMCLearning=True
             )
 
-stamp = 'NULL________TMC_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Ns' + \
+stamp = 'TMC_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Ns' + \
     str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr)
 myRBM.file_stamp = stamp
 base = 1.7
@@ -65,8 +65,8 @@ myRBM.list_save_time = v
 myRBM.list_save_rbm = np.arange(1, ep_max, fq_msr_RBM)
 
 fq_msr_RBM = 1000
-myRBM.list_save_rbm = np.arange(1,ep_max,fq_msr_RBM)
+myRBM.list_save_rbm = np.arange(1, ep_max, fq_msr_RBM)
 myRBM.SetVisBias(data.T)
 myRBM.fit(data.T, ep_max)
 print("model updates saved at " + "../model/TMC"+stamp+".h5")
-print("model saved at " +"../model/RBM"+stamp+".h5")
+print("model saved at " + "../model/RBM"+stamp+".h5")
