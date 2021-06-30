@@ -23,7 +23,7 @@ mb_s = 600
 num_pcd = 600
 Nh = 20
 Nv = data.shape[1]
-ep_max = 100
+ep_max = 1
 w_hat = torch.linspace(0, 1, steps=100)
 _, _, V = torch.svd(data)
 V = V[:, 0]
@@ -46,15 +46,15 @@ myRBM = RBM(num_visible=Nv,
             TMCLearning=True
             )
 
-stamp = 'TMC_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Ns' + \
+stamp = 'NULL________TMC_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Ns' + \
     str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr)
 myRBM.file_stamp = stamp
 base = 1.7
-v = np.array([0,1],dtype=int)
-allm = np.append(np.array(0),base**np.array(list(range(30))))
+v = np.array([0, 1], dtype=int)
+allm = np.append(np.array(0), base**np.array(list(range(30))))
 for k in range(30):
     for m in allm:
-        v = np.append(v,int(base**k)+int(m)) 
+        v = np.append(v, int(base**k)+int(m))
 v = np.array(list(set(v)))
 v = np.sort(v)
 myRBM.list_save_time = v
