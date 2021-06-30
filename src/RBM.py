@@ -614,8 +614,8 @@ class RBM:
         Xc_neg = (v_neg.t() - self.VisDataAv).t()
         Hc_neg = (h_neg_m.t() - self.HidDataAv).t()
 
-        NormPos=1.0/self.mb_s
-        NormNeg=1.0/self.num_pcd
+        NormPos = 1.0/self.mb_s
+        NormNeg = 1.0/self.num_pcd
         # NormL2 = self.regL2
 
         siτa_neg = Hc_neg.mm(Xc_neg.t())*NormNeg
@@ -685,7 +685,10 @@ class RBM:
                 tmph[:, i*nb_chain:i*nb_chain+nb_chain], dim=1) for i in range(nb_point)], 1)
             s_i = torch.trapz(s_i[:, 1:]*p_m, w_hat_b[1:], dim=1)
             tau_a = torch.trapz(tau_a[:, 1:]*p_m, w_hat_b[1:], dim=1)
-
+            fname = "../data/saveDistrib.h5"
+            f = h5py.File(fname, 'w')
+            f.create_dataset('p_m'+str(self.up_tot), data=p_m.cpu())
+            f.close()
             prod = torch.zeros(
                 (self.Nv, self.Nh, nb_point*nb_chain), device=self.device)
             for i in range(tmpv.shape[1]):
