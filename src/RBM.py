@@ -572,9 +572,9 @@ class RBM:
         self.hbias += torch.sum(h_pos, 1)*lr_p - negTermH*lr_n
         fname = '../data/valGradTMC.h5'
         f = h5py.File(fname, 'w')
-        f.create_dataset('negTermW'+str(self.up_tot), data=negTermW)
-        f.create_dataset('negTermH'+str(self.up_tot), data=negTermH)
-        f.create_dataset('negTermV'+str(self.up_tot), data=negTermV)
+        f.create_dataset('negTermW'+str(self.up_tot), data=negTermW.cpu())
+        f.create_dataset('negTermH'+str(self.up_tot), data=negTermH.cpu())
+        f.create_dataset('negTermV'+str(self.up_tot), data=negTermV.cpu())
         f.close()
 
     # Update weights and biases
@@ -594,10 +594,10 @@ class RBM:
 
         fname = '../data/valGradNorm.h5'
         f = h5py.File(fname, 'w')
-        f.create_dataset('negTermW'+str(self.up_tot), data=NegTerm_ia)
+        f.create_dataset('negTermW'+str(self.up_tot), data=NegTerm_ia.cpu())
         f.create_dataset('negTermH'+str(self.up_tot),
-                         data=torch.sum(h_neg_m, 1))
-        f.create_dataset('negTermV'+str(self.up_tot), data=torch.sum(v_neg, 1))
+                         data=torch.sum(h_neg_m, 1).cpu())
+        f.create_dataset('negTermV'+str(self.up_tot), data=torch.sum(v_neg, 1).cpu())
         f.close()
 
     # Update weights and biases
@@ -655,8 +655,8 @@ class RBM:
             # xmin = torch.min(proj_data)
             if torch.mean(V0) < 0:
                 V0 = -V0
-            xmin = 0
-            xmax = 1
+            xmin = -0.5
+            xmax = 1.5
             w_hat_b = torch.linspace(
                 xmin, xmax, steps=nb_point, device=self.device)
             w_hat = torch.zeros(nb_chain*nb_point, device=self.device)
@@ -700,9 +700,10 @@ class RBM:
         if self.UpdCentered:
             self.updateWeightsCentered(
                 X, h_pos_v, h_pos_m, self.X_pc, h_neg_v, h_neg_m)
-        else:
+        elif self.TMCLearning:
             self.updateWeightsTMC(X, h_pos_m, s_i, tau_a, prod.T)
-
+        else:
+            self.updateWeights(X, h_pos_m, self.X_pc, h_neg_v, h_neg_m)
     def getMiniBatches(self, X, m):
         return X[:, m*self.mb_s:(m+1)*self.mb_s]
 
