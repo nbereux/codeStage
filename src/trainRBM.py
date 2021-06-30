@@ -43,10 +43,10 @@ myRBM = RBM(num_visible=Nv,
             N=N,
             it_mean=it_mean,
             V=V,
-            TMCLearning=True
+            TMCLearning=False
             )
 
-stamp = 'TMC_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Ns' + \
+stamp = 'RBM_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Ns' + \
     str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr)
 myRBM.file_stamp = stamp
 base = 1.7

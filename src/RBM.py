@@ -566,12 +566,13 @@ class RBM:
 
     def updateWeightsTMC(self, v_pos, h_pos, negTermV, negTermH, negTermW):
         lr_p = self.lr/self.mb_s
-        lr_n = self.lr
+        lr_n = self.lr/5
         self.W += h_pos.mm(v_pos.t())*lr_p - negTermW*lr_n
         self.vbias += torch.sum(v_pos, 1)*lr_p - negTermV*lr_n
         self.hbias += torch.sum(h_pos, 1)*lr_p - negTermH*lr_n
-        fname = '../data/valGradTMC.h5'
-        f = h5py.File(fname, 'w')
+
+        fname = '../data/valGradTMC2.h5'
+        f = h5py.File(fname, 'a')
         f.create_dataset('negTermW'+str(self.up_tot), data=negTermW.cpu())
         f.create_dataset('negTermH'+str(self.up_tot), data=negTermH.cpu())
         f.create_dataset('negTermV'+str(self.up_tot), data=negTermV.cpu())
@@ -593,11 +594,12 @@ class RBM:
             torch.sum(h_neg_m, 1)*lr_n
 
         fname = '../data/valGradNorm.h5'
-        f = h5py.File(fname, 'w')
+        f = h5py.File(fname, 'a')
         f.create_dataset('negTermW'+str(self.up_tot), data=NegTerm_ia.cpu())
         f.create_dataset('negTermH'+str(self.up_tot),
                          data=torch.sum(h_neg_m, 1).cpu())
-        f.create_dataset('negTermV'+str(self.up_tot), data=torch.sum(v_neg, 1).cpu())
+        f.create_dataset('negTermV'+str(self.up_tot),
+                         data=torch.sum(v_neg, 1).cpu())
         f.close()
 
     # Update weights and biases
@@ -704,6 +706,7 @@ class RBM:
             self.updateWeightsTMC(X, h_pos_m, s_i, tau_a, prod.T)
         else:
             self.updateWeights(X, h_pos_m, self.X_pc, h_neg_v, h_neg_m)
+
     def getMiniBatches(self, X, m):
         return X[:, m*self.mb_s:(m+1)*self.mb_s]
 
@@ -764,7 +767,7 @@ class RBM:
                     plt.plot(S_d.cpu()[:len(S)], label="data")
                     plt.semilogy()
                     plt.legend()
-                    plt.savefig("../tmp2/TMCeig"+str(self.up_tot)+".png")
+                    plt.savefig("../tmp/TMCeig"+str(self.up_tot)+".png")
                     plt.close()
 
                 self.up_tot += 1
