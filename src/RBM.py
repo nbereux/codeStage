@@ -566,12 +566,12 @@ class RBM:
 
     def updateWeightsTMC(self, v_pos, h_pos, negTermV, negTermH, negTermW):
         lr_p = self.lr/self.mb_s
-        lr_n = self.lr/5
+        lr_n = self.lr
         self.W += h_pos.mm(v_pos.t())*lr_p - negTermW*lr_n
         self.vbias += torch.sum(v_pos, 1)*lr_p - negTermV*lr_n
         self.hbias += torch.sum(h_pos, 1)*lr_p - negTermH*lr_n
 
-        fname = '../data/valGradTMC2.h5'
+        fname = '../data/valGradTMC.h5'
         f = h5py.File(fname, 'a')
         f.create_dataset('negTermW'+str(self.up_tot), data=negTermW.cpu())
         f.create_dataset('negTermH'+str(self.up_tot), data=negTermH.cpu())
@@ -657,7 +657,7 @@ class RBM:
             # xmin = torch.min(proj_data)
             if torch.mean(V0) < 0:
                 V0 = -V0
-            xmin = -0.5
+            xmin = -1.5
             xmax = 1.5
             w_hat_b = torch.linspace(
                 xmin, xmax, steps=nb_point, device=self.device)
