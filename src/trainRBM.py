@@ -16,11 +16,11 @@ data = np.genfromtxt('../data/data_1d2c_bal_seed14.dat')
 data = torch.tensor((data+1)/2, device=device, dtype=dtype)
 
 
-lr = 0.01
+lr = 0.1
 NGibbs = 100
 annSteps = 0
 mb_s = 600
-num_pcd = 100
+num_pcd = 600
 Nh = 20
 Nv = data.shape[1]
 ep_max = 100
