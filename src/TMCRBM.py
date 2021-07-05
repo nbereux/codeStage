@@ -357,6 +357,7 @@ class TMCRBM:
                                      data=self.vbias.cpu())
                     f.create_dataset('hbias'+str(self.up_tot),
                                      data=self.hbias.cpu())
+                    f.create_dataset('p_m'+str(self.up_tot), data=self.p_m.cpu())
                     f.close()
                     if self.verbose == 1 :
                         _, S, _ = torch.svd(self.W)
@@ -370,6 +371,8 @@ class TMCRBM:
                                  data=self.vbias.cpu())
                 f.create_dataset('hbias'+str(self.ep_tot),
                                  data=self.hbias.cpu())
+                f.create_dataset('p_m'+str(self.ep_tot), data=self.p_m.cpu())
+
                 f.close()
             
             if self.save_fig:

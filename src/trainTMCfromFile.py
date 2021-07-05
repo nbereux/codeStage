@@ -11,7 +11,7 @@ torch.set_num_threads(4)
 data = np.genfromtxt('../dataset/data_1d3c.dat')
 data = torch.tensor((data+1)/2, device=device, dtype=dtype)
 
-fmodel = h5py.File("../model/AllParametersTMCRBM_NGibbs_10_Nh20_Nv1000_Nmb200_Nepoch100_lr_0.1_N20000_Npoint1000_Nchain15.h5")
+fmodel = h5py.File("../model/AllParametersTMCRBM_NGibbs_25_Nh20_Nv1000_Nmb200_Nepoch100_lr_0.1_N20000_Npoint1000_Nchain15_phase2.h5")
 
 Nv = data.shape[1]
 Nh = 20
@@ -19,7 +19,7 @@ Nh = 20
 verbose = 0
 save_fig = True
 
-lr = 0.1
+lr = 0.01
 NGibbs = 25
 it_mean = 20
 
