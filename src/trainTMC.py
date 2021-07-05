@@ -9,7 +9,7 @@ dtype = torch.float
 torch.set_num_threads(4)
 
 #data = torch.tensor(np.genfromtxt('../dataset/data_1d2c_bal_seed14.dat'), device=device, dtype=dtype)
-data = torch.tensor(np.genfromtxt('../dataset/data_1d3c.dat'), device = device, dtype = dtype)
+data = torch.tensor(np.genfromtxt('../dataset/data_5.dat'), device = device, dtype = dtype)
 data = (data+1)/2
 
 Nv = data.shape[1]
@@ -19,8 +19,8 @@ verbose = 0
 save_fig = True
 
 lr = 0.1
-NGibbs = 10
-it_mean = 7
+NGibbs = 25
+it_mean = 20
 
 mb_s = 200
 num_pcd = 200
