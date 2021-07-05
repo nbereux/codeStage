@@ -47,7 +47,7 @@ myRBM = TMCRBM(num_visible=Nv,
             save_fig = save_fig
             )
 
-fq_msr_RBM = 1000
+fq_msr_RBM = 10
 myRBM.file_stamp = stamp
 base = 1.7
 v = np.array([0,1],dtype=int)
