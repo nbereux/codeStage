@@ -282,13 +282,8 @@ class RBM:
                  lr=0.01,  # learning rate
                  ep_max=100,  #  number of epochs
                  mb_s=50,  # size of the minibatch
-                 w_hat=torch.linspace(0, 1, steps=100),
-                 N=20000,
-                 V=0,
-                 it_mean=5,
                  UpdCentered=False,  # Update using centered gradients
                  CDLearning=False,
-                 TMCLearning=False
                  ):
         self.Nv = num_visible
         self.Nh = num_hidden
@@ -309,11 +304,6 @@ class RBM:
         self.ep_max = ep_max
         self.mb_s = mb_s
         self.num_pcd = num_pcd
-        # TMC Sampling
-        self.w_hat = w_hat
-        self.N = N
-        self.V = V
-        self.it_mean = it_mean
 
         self.ep_tot = 0
         self.up_tot = 0
@@ -323,9 +313,8 @@ class RBM:
         self.VisDataAv = 0
         self.HidDataAv = 0
         self.UpdCentered = UpdCentered
-        self.ResetPermChainBatch = False
+        self.ResetPermChainBatch = True
         self.CDLearning = CDLearning
-        self.TMCLearning = TMCLearning
 
     # save RBM's parameters
     def saveRBM(self, fname):
@@ -521,63 +510,6 @@ class RBM:
 
         return v, mv, h, mh
 
-    def TMCSample(self, v, w_hat, N, V, it_mcmc=0, it_mean=0, ß=1):
-        if it_mcmc == 0:
-            it_mcmc = self.gibbs_steps
-        if it_mean == 0:
-            it_mean = self.it_mean
-        vtab = torch.zeros(v.shape, device=self.device)
-        v_curr = v
-        # V = V
-        norm = 1/(v_curr.shape[0]**0.5)
-        w_curr = (torch.mv(v_curr.T, V)*norm)
-        # index = torch.randperm(v_curr.shape[0])
-        for t in range(it_mcmc):
-            # print(t)
-            h_curr, _ = self.SampleHiddens01(v_curr)
-            h_i = (torch.mm(self.W.T, h_curr) +
-                   self.vbias.reshape(v.shape[0], 1))  # Nv x Ns
-            w_next = w_curr.clone()
-            v_next = torch.clone(v_curr)
-            # index = torch.randperm(v_curr.shape[0])
-
-            for idx in range(v_curr.shape[0]):
-                i = idx
-                v_next[i, :] = 1-v_curr[i, :]
-                w_next += ((2*v_next[i, :]-1)*V[i]*norm)
-
-                # On calcul -DeltaE
-                ΔE = ß*((2*v_next[i, :]-1)*h_i[i, :])-(N/2) * \
-                    ((w_hat-w_next)**2-(w_hat-w_curr)**2)
-
-                tir = torch.rand(
-                    v_curr.shape[1], 1, device=self.device).squeeze()
-                prob = torch.exp(ΔE).squeeze()
-                v_curr[i, :] = torch.where(
-                    tir < prob, v_next[i, :], v_curr[i, :])
-                v_next[i, :] = torch.where(
-                    tir < prob, v_next[i, :], 1-v_next[i, :])
-                w_curr = torch.where(tir < prob, w_next, w_curr)
-                w_next = torch.where(tir < prob, w_next, w_curr)
-            if (t >= (it_mcmc-it_mean)):
-                vtab += v_curr
-        vtab = vtab*(1/it_mean)
-        return v_curr, h_curr, vtab
-
-    def updateWeightsTMC(self, v_pos, h_pos, negTermV, negTermH, negTermW):
-        lr_p = self.lr/self.mb_s
-        lr_n = self.lr
-        self.W += h_pos.mm(v_pos.t())*lr_p - negTermW*lr_n
-        self.vbias += torch.sum(v_pos, 1)*lr_p - negTermV*lr_n
-        self.hbias += torch.sum(h_pos, 1)*lr_p - negTermH*lr_n
-
-        fname = '../data/valGradTMC.h5'
-        f = h5py.File(fname, 'a')
-        f.create_dataset('negTermW'+str(self.up_tot), data=negTermW.cpu())
-        f.create_dataset('negTermH'+str(self.up_tot), data=negTermH.cpu())
-        f.create_dataset('negTermV'+str(self.up_tot), data=negTermV.cpu())
-        f.close()
-
     # Update weights and biases
 
     def updateWeights(self, v_pos, h_pos, v_neg, h_neg_v, h_neg_m):
@@ -592,15 +524,6 @@ class RBM:
         self.vbias += torch.sum(v_pos, 1)*lr_p - torch.sum(v_neg, 1)*lr_n
         self.hbias += torch.sum(h_pos, 1)*lr_p - \
             torch.sum(h_neg_m, 1)*lr_n
-
-        fname = '../data/valGradNorm.h5'
-        f = h5py.File(fname, 'a')
-        f.create_dataset('negTermW'+str(self.up_tot), data=NegTerm_ia.cpu())
-        f.create_dataset('negTermH'+str(self.up_tot),
-                         data=torch.sum(h_neg_m, 1).cpu())
-        f.create_dataset('negTermV'+str(self.up_tot),
-                         data=torch.sum(v_neg, 1).cpu())
-        f.close()
 
     # Update weights and biases
     def updateWeightsCentered(self, v_pos, h_pos_v, h_pos_m, v_neg, h_neg_v, h_neg_m, ν=0.2, ε=0.01):
@@ -641,77 +564,12 @@ class RBM:
         if self.CDLearning:
             self.X_pc = X
             self.X_pc, _, h_neg_v, h_neg_m = self.GetAv()
-        elif self.TMCLearning:
-            # time_start = time.time()
-            nb_chain = 15  # Nb de chaines pour chaque w_hat
-            it_mcmc = 25  # Nb it_mcmc pour chaque chaine
-            it_mean = 10  # Nb it considérée pour la moyenne temporelle de chaque chaine
-            N = 20000  # Contrainte
-            nb_point = 1000  # Nb de points de discrétisation pour w_hat
-            start = torch.bernoulli(torch.rand(
-                self.Nv, nb_chain*nb_point, device=self.device))
-            # SVD des poids
-            _, _, V0 = torch.svd(self.W)
-            V0 = V0[:, 0]
-            if torch.mean(V0) < 0:
-                V0 = -V0
-            
-            # pour adapter la taille de l'intervalle discrétisé à chaque itération
-            # proj_data = torch.mv(X.T, V0)
-            # xmin = torch.min(proj_data) - 0.2
-            # xmax = torch.max(proj_data) + 0.2
-
-            xmin = -1.5
-            xmax = 1.5
-            w_hat_b = torch.linspace(
-                xmin, xmax, steps=nb_point, device=self.device)
-            w_hat = torch.zeros(nb_chain*nb_point, device=self.device)
-            for i in range(nb_point):
-                for j in range(nb_chain):
-                    w_hat[i*nb_chain+j] = w_hat_b[i]
-            tmpv, tmph, vtab = self.TMCSample(
-                start, w_hat, N, V0, it_mcmc=it_mcmc, it_mean=it_mean)
-            
-            y = np.array(torch.mm(vtab.T, V0.unsqueeze(1)
-                                  ).cpu().squeeze())/self.Nv**0.5
-            newy = np.array([np.mean(y[i*nb_chain:i*nb_chain+nb_chain])
-                             for i in range(nb_point)])
-            #w_hat_np = w_hat.cpu().numpy()
-            w_hat_b_np = w_hat_b.cpu().numpy()
-            res = np.zeros(len(w_hat_b)-1)
-            for i in range(1, len(w_hat_b)):
-                res[i-1] = simps(newy[:i]-w_hat_b_np[:i], w_hat_b_np[:i])
-            const = simps(np.exp(N*res-np.max(N*res)), w_hat_b_np[:-1])
-            p_m = torch.tensor(np.exp(N*res-np.max(N*res)) /
-                               const, device=self.device)
-            s_i = torch.stack([torch.mean(
-                tmpv[:, i*nb_chain:i*nb_chain+nb_chain], dim=1) for i in range(nb_point)], 1)
-            tau_a = torch.stack([torch.mean(
-                tmph[:, i*nb_chain:i*nb_chain+nb_chain], dim=1) for i in range(nb_point)], 1)
-            s_i = torch.trapz(s_i[:, 1:]*p_m, w_hat_b[1:], dim=1)
-            tau_a = torch.trapz(tau_a[:, 1:]*p_m, w_hat_b[1:], dim=1)
-            fname = "../data/saveDistrib.h5"
-            f = h5py.File(fname, 'w')
-            f.create_dataset('p_m'+str(self.up_tot), data=p_m.cpu())
-            f.close()
-            prod = torch.zeros(
-                (self.Nv, self.Nh, nb_point*nb_chain), device=self.device)
-            for i in range(tmpv.shape[1]):
-                prod[:, :, i] = torch.outer(tmpv[:, i], tmph[:, i])
-            prod = torch.stack([torch.mean(
-                prod[:, :, i*nb_chain:i*nb_chain+nb_chain], dim=2) for i in range(nb_point)], 2)
-            prod = torch.trapz(prod[:, :, 1:]*p_m, w_hat_b[1:], dim=2)
-
-            # print(time.time() - time_start)
-
         else:
             self.X_pc, _, h_neg_v, h_neg_m = self.GetAv()
 
         if self.UpdCentered:
             self.updateWeightsCentered(
                 X, h_pos_v, h_pos_m, self.X_pc, h_neg_v, h_neg_m)
-        elif self.TMCLearning:
-            self.updateWeightsTMC(X, h_pos_m, s_i, tau_a, prod.T)
         else:
             self.updateWeights(X, h_pos_m, self.X_pc, h_neg_v, h_neg_m)
 
@@ -745,7 +603,6 @@ class RBM:
             f.create_dataset('alltime', data=self.list_save_rbm)
             f.close()
 
-        _, S_d, _ = torch.svd(X/np.sqrt(X.shape[1]))
         for t in range(ep_max):
             print("IT ", self.ep_tot)
             self.ep_tot += 1
@@ -770,13 +627,6 @@ class RBM:
                     f.create_dataset('hbias'+str(self.up_tot),
                                      data=self.hbias.cpu())
                     f.close()
-                    _, S, _ = torch.svd(self.W)
-                    plt.plot(S.cpu(), label="W")
-                    plt.plot(S_d.cpu()[:len(S)], label="data")
-                    plt.semilogy()
-                    plt.legend()
-                    plt.savefig("../tmp/TMCeig"+str(self.up_tot)+".png")
-                    plt.close()
 
                 self.up_tot += 1
 
