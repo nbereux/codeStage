@@ -257,7 +257,7 @@ class TMCRBM2D:
             self.V0 = -self.V0
         
         # pour adapter la taille de l'intervalle discrétisé à chaque itération
-        proj_data = torch.mm(X.T, self.V0)
+        proj_data = torch.mm(X.T, self.V0)/self.Nv**.5
         width_plus = 0.2
         limits = torch.zeros((2, self.nDim))
         for i in range(self.nDim):
