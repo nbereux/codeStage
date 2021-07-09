@@ -19,8 +19,8 @@ verbose = 0
 save_fig = False
 
 lr = 0.1
-NGibbs = 50
-it_mean = 40
+NGibbs = 30
+it_mean = 20
 
 mb_s = 200
 num_pcd = 200

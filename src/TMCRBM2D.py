@@ -307,7 +307,7 @@ class TMCRBM2D:
             for j in range(self.nb_point_dim[1]):
                 res_y[i,j] = simps(square[1][i,:(j+1)].cpu().numpy(), w_hat_tmp[1,i,:(j+1)])
 
-        pot = np.expand_dims(res_x, 1).repeat(self.nb_point_dim[1],1) + res_y    
+        pot = np.expand_dims(res_x, 1).repeat(self.nb_point_dim[1].cpu(),1) + res_y    
         res = np.exp(self.N*(pot-np.max(pot)))
         
         const = np.zeros(res.shape[0])
