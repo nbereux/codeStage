@@ -30,7 +30,7 @@ ep_max = 1000
 N = 20000
 nb_chain = 15
 nb_point_dim = torch.tensor([50,50])
-stamp = 'TMC2DRBM_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Nv' + str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr) + '_N' + str(N) + '_Npoint' + str(nb_point) + '_Nchain' + str(nb_chain) + '_phase2'
+stamp = 'TMC2DRBM_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Nv' + str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr) + '_N' + str(N) + '_Npoint' + str(nb_point_dim.prod().item()) + '_Nchain' + str(nb_chain) + '_phase2'
 
 myRBM = TMCRBM2D(num_visible=Nv,
             num_hidden=Nh,
