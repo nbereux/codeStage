@@ -182,18 +182,13 @@ class TMCRBM2D:
         v_curr = v
         norm = 1/(v_curr.shape[0]**0.5)
         w_curr = (torch.mm(v_curr.T, V)*norm)[:,:w_hat.shape[0]]
-        index = torch.randperm(v_curr.shape[0])
         for t in range(it_mcmc):
-            #print('init it')
-            #print(t)
             h_curr, _ = self.SampleHiddens01(v_curr)
             h_i = (torch.mm(self.W.T, h_curr)+self.vbias.reshape(v.shape[0],1)) # Nv x Ns
             w_next = w_curr.clone()
             
             v_next = torch.clone(v_curr)
-            index = torch.randperm(v_curr.shape[0])
-            for idx in range(v_curr.shape[0]):
-                i = idx
+            for i in range(v_curr.shape[0]):
                 v_next[i,:] = 1-v_curr[i,:]
                 for j in range(w_next.shape[1]):
                     w_next[:,j] += ((2*v_next[i,:]-1)*V[i,j]*norm)
@@ -212,7 +207,7 @@ class TMCRBM2D:
                 w_next[neg_index,:] =  w_curr[neg_index,:]
             if (t>= (it_mcmc-it_mean)):
                 vtab += v_curr
-        vtab = vtab*(1/it_mean)    
+        vtab = vtab*(1/it_mean)
         vtab = vtab.reshape(self.Nv, self.nb_point, self.nb_chain)
         v_curr = v_curr.reshape(self.Nv, self.nb_point, self.nb_chain)
         h_curr = h_curr.reshape(self.Nh, self.nb_point, self.nb_chain)
@@ -273,8 +268,8 @@ class TMCRBM2D:
         x_grid = x_grid.reshape(self.nb_point)
         y_grid = []
         y_d = np.linspace(limits[0,1], limits[1,1], self.nb_point_dim[1])
-        for i in range(self.nb_point_dim[0]):
-            for j in range(self.nb_point_dim[1]):
+        for i in range(self.nb_point_dim[1]):
+            for j in range(self.nb_point_dim[0]):
                 y_grid.append(y_d[i])
         self.w_hat_b = torch.tensor([x_grid, y_grid], device = self.device, dtype = self.dtype)
         
@@ -292,49 +287,44 @@ class TMCRBM2D:
         
         print("Sampling time : ", time.time()-s)
         
-        y = torch.mm(torch.mean(vtab, dim = 2).T, self.V0)[:,:self.nDim]/self.Nv**0.5
-        #newy = torch.tensor([torch.mean(y[i*self.nb_chain:i*self.nb_chain+self.nb_chain,:], dim = 0).cpu().numpy() for i in range(self.nb_point)], device = self.device)
-
-        s = time.time()
-        
-        grad_pot = y.T-self.w_hat_b
+        newy = torch.mm(torch.mean(vtab, dim = 2).T, self.V0)[:,:self.nDim]/self.Nv**0.5
+        grad_pot = newy.T-self.w_hat_b
         square = torch.zeros(2, self.nb_point_dim[0], self.nb_point_dim[1])
+        w_hat_tmp = np.zeros((2, self.nb_point_dim[0], self.nb_point_dim[1]))
         for i in range(0,grad_pot.shape[1], self.nb_point_dim[0]):
+                w_hat_tmp[:,:,int(i/self.nb_point_dim[0])] = self.w_hat_b[:, i:(i+self.nb_point_dim[0])].cpu().numpy()
                 square[:,:, int(i/self.nb_point_dim[0])] = grad_pot[:,i:(i+self.nb_point_dim[0])]
+        
         w_hat_dim = []
         for i in range(self.nDim):
             w_hat_dim.append(np.linspace(limits[0,i], limits[1,i], self.nb_point_dim[i]))
 
-        #calcul de l'intégrale sur w_1
-        res_x = np.zeros((self.nb_point_dim[0],self.nb_point_dim[1]))
-        for j in range(1,self.nb_point_dim[1]):
-            for i in range(1, self.nb_point_dim[0]):
-                res_x[i,j] = simps(square[0,:i,j].cpu().numpy(), w_hat_dim[0][:i])
-
-        #calcul de l'intégrale sur w_2
+        res_x = np.zeros(self.nb_point_dim[0])
+        for i in range(self.nb_point_dim[0]):
+            res_x[i] = simps(square[0][:(i+1),0].cpu().numpy(), w_hat_tmp[0,:(i+1),0])
         res_y = np.zeros((self.nb_point_dim[0], self.nb_point_dim[1]))
-        for i in range(1, self.nb_point_dim[0]):
-            for j in range(1, self.nb_point_dim[1]):
-                res_y[i,j] = simps(square[1,i,:j].cpu().numpy(), w_hat_dim[1][:j])
-        
-        print("Potential integration time : ", time.time()-s)
+        for i in range(self.nb_point_dim[0]):
+            for j in range(self.nb_point_dim[1]):
+                res_y[i,j] = simps(square[1][i,:(j+1)].cpu().numpy(), w_hat_tmp[1,i,:(j+1)])
 
-        pot = res_x + res_y
-        pot = pot.T
+        pot = np.expand_dims(res_x, 1).repeat(self.nb_point_dim[1],1) + res_y    
         res = np.exp(self.N*(pot-np.max(pot)))
-        const = np.zeros(res.shape[0]-1)
-        for i in range(1, res.shape[0]):
-            const[i-1] = simps(res[:,i], w_hat_dim[1])
-        const = simps(const, w_hat_dim[1][:-1])
+        
+        const = np.zeros(res.shape[0])
+        for i in range(res.shape[0]):
+            const[i-1] = simps(res[:,i], w_hat_tmp[1, i, :])
+        const = simps(const, w_hat_tmp[0,:,0])
         self.p_m = torch.tensor(res/const, device=self.device, dtype=self.dtype)
         
-        #s_i = torch.stack([torch.mean(
-        #    tmpv[:, i*self.nb_chain:i*self.nb_chain+self.nb_chain], dim=1) for i in range(self.nb_point)], 1)
         s_i = torch.mean(tmpv, dim = 2)
         tau_a = torch.mean(tmph, dim = 2)
-        #tau_a = torch.stack([torch.mean(
-        #    tmph[:, i*self.nb_chain:i*self.nb_chain+self.nb_chain], dim=1) for i in range(self.nb_point)], 1)
-        
+        s_i_square = torch.zeros([s_i.shape[0], self.nb_point_dim[0], self.nb_point_dim[1]])
+        tau_a_square = torch.zeros([tau_a.shape[0], self.nb_point_dim[0], self.nb_point_dim[1]])
+
+        for i in range(0,grad_pot.shape[1], self.nb_point_dim[0]):
+            s_i_square[:,:,int(i/self.nb_point_dim[0])] = s_i[:, i:(i+self.nb_point_dim[0])]
+            tau_a_square[:,:,int(i/self.nb_point_dim[0])] = tau_a[:, i:(i+self.nb_point_dim[0])]
+    
         prod = torch.zeros(
             (self.Nv, self.Nh, self.nb_point), device=self.device)
         tmpcompute = torch.zeros(self.Nv, self.Nh, self.nb_chain)
@@ -344,10 +334,7 @@ class TMCRBM2D:
                 tmpcompute[:,:,k] = torch.outer(tmpv[:, i, k], tmph[:, i, k])
             prod[:, :, i] = torch.mean(tmpcompute, dim = 2)
         print("si tau_a prod : ", time.time()-s)
-        #prod = torch.stack([torch.mean(
-        #    prod[:, :, i*self.nb_chain:i*self.nb_chain+self.nb_chain], dim=2) for i in range(self.nb_point)], 2)
-
-
+        
         s_i_square = torch.zeros([s_i.shape[0], self.nb_point_dim[0], self.nb_point_dim[1]], device=self.device, dtype=self.dtype)
         tau_a_square = torch.zeros([tau_a.shape[0], self.nb_point_dim[0], self.nb_point_dim[1]], device=self.device, dtype=self.dtype)
         prod_square = torch.zeros((prod.shape[0], prod.shape[1], self.nb_point_dim[0], self.nb_point_dim[1]), device=self.device, dtype=self.dtype)
@@ -355,24 +342,25 @@ class TMCRBM2D:
             s_i_square[:,:,int(i/self.nb_point_dim[0])] = s_i[:, i:(i+self.nb_point_dim[0])]
             tau_a_square[:,:,int(i/self.nb_point_dim[0])] = tau_a[:, i:(i+self.nb_point_dim[0])]
             prod_square[:,:,:,int(i/self.nb_point_dim[0])] = prod[:, :, i:(i+self.nb_point_dim[0])]
-        
+
         tmpres_s_i = torch.zeros(self.Nv, self.nb_point_dim[0], device=self.device, dtype=self.dtype)
         tmpres_tau_a = torch.zeros(self.Nh, self.nb_point_dim[0], device=self.device, dtype=self.dtype)
         tmpres_prod = torch.zeros((prod_square.shape[0], prod_square.shape[1], prod_square.shape[2]), device=self.device, dtype=self.dtype)
-        s_i_square = self.p_m*s_i_square
+        s_i_square = self.p_m*s_i_square #Ca fait bien ce qu'on veut
         tau_a_square = self.p_m*tau_a_square
         prod_square = self.p_m*prod_square
         s_i_fin = torch.zeros(self.Nv, device=self.device, dtype=self.dtype)
         tau_a_fin = torch.zeros(self.Nh, device=self.device, dtype=self.dtype)
         prod_fin = torch.zeros(prod_square.shape[0], prod_square.shape[1], device=self.device, dtype=self.dtype)
         for i in range(self.nb_point_dim[0]):
-            tmpres_s_i[:,i] = torch.trapz(s_i_square[:,i,:-1], torch.tensor(w_hat_dim[1][:-1], device=self.device, dtype=self.dtype))
-            tmpres_tau_a[:,i] = torch.trapz(tau_a_square[:,i,:-1], torch.tensor(w_hat_dim[1][:-1], device=self.device, dtype=self.dtype))
-            tmpres_prod[:,:,i] = torch.trapz(prod_square[:,:,i,:-1], torch.tensor(w_hat_dim[1][:-1], device=self.device, dtype=self.dtype))
-        tau_a_fin = torch.trapz(tmpres_tau_a[:,:-1], torch.tensor(w_hat_dim[0][:-1], device=self.device, dtype=self.dtype))
-        s_i_fin = torch.trapz(tmpres_s_i[:,:-1], torch.tensor(w_hat_dim[0][:-1], device=self.device, dtype=self.dtype))
-        prod_fin = torch.trapz(tmpres_prod[:,:,:-1], torch.tensor(w_hat_dim[0][:-1], device=self.device, dtype=self.dtype))
-        
+            tmpres_s_i[:,i] = torch.trapz(s_i_square[:,i,:], torch.tensor(w_hat_dim[1], device=self.device, dtype=self.dtype))
+            tmpres_tau_a[:,i] = torch.trapz(tau_a_square[:,i,:], torch.tensor(w_hat_dim[1], device=self.device, dtype=self.dtype))
+            tmpres_prod[:,:,i] = torch.trapz(prod_square[:,:,i,:], torch.tensor(w_hat_dim[1], device=self.device, dtype=self.dtype))
+        tau_a_fin = torch.trapz(tmpres_tau_a, torch.tensor(w_hat_dim[0], device=self.device, dtype=self.dtype))
+        s_i_fin = torch.trapz(tmpres_s_i, torch.tensor(w_hat_dim[0], device=self.device, dtype=self.dtype))
+        prod_fin = torch.trapz(tmpres_prod, torch.tensor(w_hat_dim[0], device=self.device, dtype=self.dtype))
+
+
         if self.UpdCentered:
             self.updateWeightsCentered(X, h_pos_v, h_pos_m, s_i_fin, tau_a_fin, prod_fin.T)
         else:
