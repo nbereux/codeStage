@@ -418,7 +418,7 @@ class TMCRBM2D:
                     f.create_dataset('hbias'+str(self.up_tot),
                                      data=self.hbias.cpu())
                     f.create_dataset('p_m'+str(self.up_tot), data=self.p_m.cpu())
-                    f.create_dataset('w_hat'+str(self.up_tot), data=self.w_hat_tmp.cpu())
+                    f.create_dataset('w_hat'+str(self.up_tot), data=self.w_hat_tmp)
                     f.close()
                     if self.verbose == 1 :
                         _, S, _ = torch.svd(self.W)
