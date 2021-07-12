@@ -423,6 +423,18 @@ class TMCRBM2D:
                     if self.verbose == 1 :
                         _, S, _ = torch.svd(self.W)
                         print(S[:2])
+
+                if self.save_fig:
+                    vinit = torch.bernoulli(torch.rand((self.Nv, 1000), device=self.device, dtype=self.dtype))
+                    si, _, _, _ = self.Sampling(vinit, it_mcmc=self.gibbs_steps)
+                    proj_gen = torch.mm(si.T, self.V0).cpu().numpy()/self.Nv**0.5
+                    proj_data = torch.mm(X.T, self.V0).cpu().numpy()/self.Nv**0.5
+                    plt.figure(dpi = 200)
+                    plt.scatter(proj_data[:,0], proj_data[:,1])
+                    plt.scatter(proj_gen[:,0], proj_gen[:,1])
+                    plt.contour(self.w_hat_tmp[0], self.w_hat_tmp[1], torch.log(self.p_m).cpu())
+                    plt.savefig("../fig/TMC/distrib_up_"+str(self.up_tot)+".png")
+                    plt.close()
                 self.up_tot += 1
 
             if self.ep_tot in self.list_save_rbm:
@@ -436,17 +448,7 @@ class TMCRBM2D:
 
                 f.close()
             
-            if self.save_fig:
-                vinit = torch.bernoulli(torch.rand((self.Nv, 1000), device=self.device, dtype=self.dtype))
-                si, _, _, _ = self.Sampling(vinit, it_mcmc=self.gibbs_steps)
-                proj_gen = torch.mm(si.T, self.V0).cpu().numpy()/self.Nv**0.5
-                proj_data = torch.mm(X.T, self.V0).cpu().numpy()/self.Nv**0.5
-                plt.figure(dpi = 200)
-                plt.scatter(proj_data[:,0], proj_data[:,1])
-                plt.scatter(proj_gen[:,0], proj_gen[:,1])
-                plt.contour(self.w_hat_tmp[0], self.w_hat_tmp[1], torch.log(self.p_m).cpu())
-                plt.savefig("../fig/TMC/distrib_ep_"+str(self.ep_tot)+".png")
-                plt.close()
+            
 
 
 
