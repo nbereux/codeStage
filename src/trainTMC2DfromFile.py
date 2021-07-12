@@ -26,11 +26,11 @@ it_mean = 20
 
 mb_s = 200
 num_pcd = 200
-ep_max = 1000
+ep_max = 100
 N = 20000
 nb_chain = 15
 nb_point_dim = torch.tensor([50,50])
-stamp = 'TMC2DRBM_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Nv' + str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr) + '_N' + str(N) + '_Npoint' + str(nb_point_dim.prod().item()) + '_Nchain' + str(nb_chain) + '_phase2'
+stamp = 'TMC2DRBM_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Nv' + str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr) + '_N' + str(N) + '_Npoint' + str(nb_point_dim.prod().item()) + '_Nchain' + str(nb_chain) + '_phase2_from110'
 
 myRBM = TMCRBM2D(num_visible=Nv,
             num_hidden=Nh,
@@ -72,7 +72,7 @@ alltimes = []
 for t in fmodel['alltime'][:]:
     if 'W'+str(t) in fmodel:
         alltimes.append(t)
-t = alltimes[-1]
+t = 110
 myRBM.W = torch.tensor(fmodel['W'+str(t)], device = myRBM.device)
 myRBM.Nh = myRBM.W.shape[0]
 myRBM.hbias = torch.tensor(fmodel['hbias'+str(t)], device = myRBM.device)
