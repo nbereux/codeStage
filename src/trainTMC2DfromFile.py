@@ -15,7 +15,7 @@ data = torch.tensor((data+1)/2, device=device, dtype=dtype)
 fmodel = h5py.File("../model/AllParametersTMC2DRBM_NGibbs_30_Nh100_Nv1000_Nmb200_Nepoch100_lr_0.1_N20000_Npoint2500_Nchain10.h5", "r")
 
 Nv = data.shape[1]
-Nh = 40
+Nh = 100
 
 verbose = 0
 save_fig = False
@@ -40,8 +40,8 @@ myRBM = TMCRBM2D(num_visible=Nv,
             UpdCentered=True,
             mb_s=mb_s,
             num_pcd=num_pcd,
-            ResetPermChainBatch=False,
-            CDLearning=True,
+            ResetPermChainBatch=True,
+            CDLearning=False,
             N = N,
             nb_chain = nb_chain,
             nb_point_dim=nb_point_dim,

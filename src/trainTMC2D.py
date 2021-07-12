@@ -18,7 +18,7 @@ Nh = 100
 verbose = 0
 save_fig = False
 
-lr = 0.1
+lr = 0.01
 NGibbs = 30
 it_mean = 20
 

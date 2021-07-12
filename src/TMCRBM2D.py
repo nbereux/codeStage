@@ -290,9 +290,9 @@ class TMCRBM2D:
         newy = torch.mm(torch.mean(vtab, dim = 2).T, self.V0)[:,:self.nDim]/self.Nv**0.5
         grad_pot = newy.T-self.w_hat_b
         square = torch.zeros(2, self.nb_point_dim[0], self.nb_point_dim[1])
-        w_hat_tmp = np.zeros((2, self.nb_point_dim[0], self.nb_point_dim[1]))
+        self.w_hat_tmp = np.zeros((2, self.nb_point_dim[0], self.nb_point_dim[1]))
         for i in range(0,grad_pot.shape[1], self.nb_point_dim[0]):
-                w_hat_tmp[:,:,int(i/self.nb_point_dim[0])] = self.w_hat_b[:, i:(i+self.nb_point_dim[0])].cpu().numpy()
+                self.w_hat_tmp[:,:,int(i/self.nb_point_dim[0])] = self.w_hat_b[:, i:(i+self.nb_point_dim[0])].cpu().numpy()
                 square[:,:, int(i/self.nb_point_dim[0])] = grad_pot[:,i:(i+self.nb_point_dim[0])]
         
         w_hat_dim = []
@@ -301,19 +301,19 @@ class TMCRBM2D:
 
         res_x = np.zeros(self.nb_point_dim[0])
         for i in range(self.nb_point_dim[0]):
-            res_x[i] = simps(square[0][:(i+1),0].cpu().numpy(), w_hat_tmp[0,:(i+1),0])
+            res_x[i] = simps(square[0][:(i+1),0].cpu().numpy(), self.w_hat_tmp[0,:(i+1),0])
         res_y = np.zeros((self.nb_point_dim[0], self.nb_point_dim[1]))
         for i in range(self.nb_point_dim[0]):
             for j in range(self.nb_point_dim[1]):
-                res_y[i,j] = simps(square[1][i,:(j+1)].cpu().numpy(), w_hat_tmp[1,i,:(j+1)])
+                res_y[i,j] = simps(square[1][i,:(j+1)].cpu().numpy(), self.w_hat_tmp[1,i,:(j+1)])
 
         pot = np.expand_dims(res_x, 1).repeat(self.nb_point_dim[1].cpu(),1) + res_y    
         res = np.exp(self.N*(pot-np.max(pot)))
         
         const = np.zeros(res.shape[0])
         for i in range(res.shape[0]):
-            const[i-1] = simps(res[:,i], w_hat_tmp[1, i, :])
-        const = simps(const, w_hat_tmp[0,:,0])
+            const[i-1] = simps(res[:,i], self.w_hat_tmp[1, i, :])
+        const = simps(const, self.w_hat_tmp[0,:,0])
         self.p_m = torch.tensor(res/const, device=self.device, dtype=self.dtype)
         
         s_i = torch.mean(tmpv, dim = 2)
@@ -418,6 +418,7 @@ class TMCRBM2D:
                     f.create_dataset('hbias'+str(self.up_tot),
                                      data=self.hbias.cpu())
                     f.create_dataset('p_m'+str(self.up_tot), data=self.p_m.cpu())
+                    f.create_dataset('w_hat'+str(self.up_tot), data=self.w_hat_tmp.cpu())
                     f.close()
                     if self.verbose == 1 :
                         _, S, _ = torch.svd(self.W)
@@ -438,14 +439,12 @@ class TMCRBM2D:
             if self.save_fig:
                 vinit = torch.bernoulli(torch.rand((self.Nv, 1000), device=self.device, dtype=self.dtype))
                 si, _, _, _ = self.Sampling(vinit, it_mcmc=self.gibbs_steps)
-                proj_gen = torch.mv(si.T, self.V0)/self.Nv**0.5
-                proj_data = torch.mv(X.T, self.V0)/self.Nv**0.5
+                proj_gen = torch.mm(si.T, self.V0).cpu().numpy()/self.Nv**0.5
+                proj_data = torch.mm(X.T, self.V0).cpu().numpy()/self.Nv**0.5
                 plt.figure(dpi = 200)
-                plt.xlim(torch.min(proj_data).item()-0.2, torch.max(proj_data).item()+0.2)
-
-                plt.hist(proj_data.cpu().numpy(), bins = 100, density = True);
-                plt.hist(proj_gen.cpu().numpy(), bins = 100, density = True);
-                plt.plot(self.w_hat_b.cpu().numpy()[1:],self.p_m.cpu().numpy(), '-')
+                plt.scatter(proj_data[:,0], proj_data[:,1])
+                plt.scatter(proj_gen[:,0], proj_gen[:,1])
+                plt.contour(self.w_hat_tmp[0], self.w_hat_tmp[1], torch.log(self.p_m).cpu())
                 plt.savefig("../fig/TMC/distrib_ep_"+str(self.ep_tot)+".png")
                 plt.close()
 
