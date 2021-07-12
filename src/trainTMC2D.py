@@ -16,7 +16,7 @@ Nv = data.shape[1]
 Nh = 100
 
 verbose = 0
-save_fig = False
+save_fig = True
 
 lr = 0.01
 NGibbs = 30
