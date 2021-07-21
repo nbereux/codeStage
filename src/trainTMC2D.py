@@ -18,8 +18,8 @@ Nh = 100
 verbose = 0
 save_fig = True
 
-lr = 0.01
-NGibbs = 30
+lr = 0.1
+NGibbs = 50
 it_mean = 20
 
 mb_s = 200

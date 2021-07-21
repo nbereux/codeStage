@@ -263,6 +263,10 @@ class TMCRBM2D:
         for i in range(self.nDim):
             limits[0, i] = proj_data[:,i].min()-width_plus
             limits[1, i] = proj_data[:,i].max()+width_plus
+        limits[0,0] = -0.4
+        limits[1,0] = 1.0
+        limits[0,1] = -1.0
+        limits[1,1] = 0.5
         x_grid = np.linspace(limits[0,0], limits[1,0], self.nb_point_dim[0])
         x_grid = np.array([x_grid for i in range(self.nb_point_dim[1])])
         x_grid = x_grid.reshape(self.nb_point)
