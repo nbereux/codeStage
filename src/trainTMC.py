@@ -24,7 +24,7 @@ it_mean = 20
 
 mb_s = 200
 num_pcd = 200
-ep_max = 100
+ep_max = 50
 N = 20000
 nb_chain = 15
 nb_point = 1000
