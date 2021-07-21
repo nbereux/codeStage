@@ -433,7 +433,7 @@ class TMCRBM2D:
                     plt.scatter(proj_data[:,0], proj_data[:,1])
                     plt.scatter(proj_gen[:,0], proj_gen[:,1])
                     plt.contour(self.w_hat_tmp[0], self.w_hat_tmp[1], torch.log(self.p_m).cpu())
-                    plt.savefig("../fig/TMC/distrib_up_"+str(self.up_tot)+".png")
+                    plt.savefig("../fig/TMC2/distrib_up_"+str(self.up_tot)+".png")
                     plt.close()
                 self.up_tot += 1
 
