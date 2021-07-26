@@ -13,7 +13,7 @@ data = torch.tensor(np.genfromtxt('../dataset/data_5.dat'), device = device, dty
 data = (data+1)/2
 
 Nv = data.shape[1]
-Nh = 20
+Nh = 100
 
 verbose = 0
 save_fig = True
