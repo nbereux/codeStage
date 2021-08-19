@@ -98,7 +98,15 @@ class TMCRBM2D:
             self.hbias = self.hbias.cuda()
             if PCD:
                 self.X_pc = self.X_pc.cuda()
-
+    
+    def ImConcat(self, X, ncol=10, nrow=5, sx=28, sy=28, ch=1):
+        tile_X = []
+        for c in range(nrow):
+            L = torch.cat((tuple(X[i, :].reshape(sx, sy, ch)
+                                 for i in np.arange(c*ncol, (c+1)*ncol))))
+            tile_X.append(L)
+        return torch.cat(tile_X, 1)
+    
     def SetVisBias(self,X):
         NS = X.shape[1]
         prob1 = torch.sum(X,1)/NS
