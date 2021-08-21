@@ -12,7 +12,7 @@ torch.set_num_threads(4)
 data = np.genfromtxt('../dataset/data_2d.dat')
 data = torch.tensor((data+1)/2, device=device, dtype=dtype)
 
-fmodel = h5py.File("../model/AllParametersTMC2DRBM_NGibbs_50_Nh100_Nv1000_Nmb200_Nepoch100_lr_0.1_N20000_Npoint2500_Nchain10.h5", "r")
+fmodel = h5py.File("../model/AllParametersTMC2DRBM_NGibbs_50_Nh100_Nv1000_Nmb200_Nepoch100_lr_0.01_N20000_Npoint2500_Nchain10_phase2.h5", "r")
 
 Nv = data.shape[1]
 Nh = 100
@@ -20,17 +20,17 @@ Nh = 100
 verbose = 0
 save_fig = True
 
-lr = 0.01
-NGibbs = 50
+lr = 0.001
+NGibbs = 70
 it_mean = 20
 
 mb_s = 200
 num_pcd = 200
-ep_max = 100
+ep_max = 50
 N = 20000
 nb_chain = 10
 nb_point_dim = torch.tensor([50,50])
-stamp = 'TMC2DRBM_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Nv' + str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr) + '_N' + str(N) + '_Npoint' + str(nb_point_dim.prod().item()) + '_Nchain' + str(nb_chain) + '_phase2'
+stamp = 'TMC2DRBM_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Nv' + str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr) + '_N' + str(N) + '_Npoint' + str(nb_point_dim.prod().item()) + '_Nchain' + str(nb_chain) + '_phase3'
 
 myRBM = TMCRBM2D(num_visible=Nv,
             num_hidden=Nh,
