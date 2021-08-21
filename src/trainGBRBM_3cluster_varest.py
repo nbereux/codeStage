@@ -14,7 +14,7 @@ dtype = torch.float
 torch.set_num_threads(4)
 
 
-X = torch.load('../dataset/data_3c.pt', device = device, dtype = dtype)
+X = torch.load('../dataset/data_3c.pt').cuda()
 
 
 Nh = 50  # number of hidden nodes
