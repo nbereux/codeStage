@@ -8,7 +8,7 @@ device = torch.device("cuda")
 dtype = torch.float
 torch.set_num_threads(4)
 
-f = gzip.open('../data/mnist.pkl.gz', 'rb')
+f = gzip.open('../dataset/mnist.pkl.gz', 'rb')
 u = pickle._Unpickler(f)
 u.encoding = 'latin1'
 p = u.load()
@@ -20,7 +20,7 @@ Nv = X.shape[0]
 Nh = 100
 
 verbose = 0
-save_fig = True
+save_fig = False
 
 lr = 0.01
 NGibbs = 50
@@ -33,7 +33,7 @@ N = 20000
 nb_chain = 10
 nb_point_dim = torch.tensor([50,50])
 
-stamp = 'MNIST_TMC2DRBM_NGibbs'+str(NGibbs)+'_Nmean'+it_mean+'_Nh'+str(Nh)+'_Nv' + str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr) + '_N' + str(N) + '_Npoint' + str(nb_point_dim.prod().item()) + '_Nchain' + str(nb_chain)
+stamp = 'MNIST_TMC2DRBM_NGibbs'+str(NGibbs)+'_Nmean'+str(it_mean)+'_Nh'+str(Nh)+'_Nv' + str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr) + '_N' + str(N) + '_Npoint' + str(nb_point_dim.prod().item()) + '_Nchain' + str(nb_chain)
 myRBM = TMCRBM2D(num_visible=Nv,
             num_hidden=Nh,
             device=device,
