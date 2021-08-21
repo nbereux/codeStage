@@ -61,6 +61,7 @@ v = np.array(list(set(v)))
 v = np.sort(v)
 myRBM.list_save_time = v
 myRBM.list_save_rbm = np.arange(1, ep_max, fq_msr_RBM)
+myRBM.SetVisBias(X)
 myRBM.fit(X, ep_max = ep_max)
 
 print("model updates saved at "+ path + "../model/AllParameters"+stamp+".h5")
