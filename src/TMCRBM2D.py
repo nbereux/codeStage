@@ -291,13 +291,13 @@ class TMCRBM2D:
             for j in range(self.nb_chain):
                 w_hat[:,i*self.nb_chain+j] = self.w_hat_b[:,i]
         
-        print("Initialisation time : ", time.time()-s)
+        #print("Initialisation time : ", time.time()-s)
         
         s=time.time()
         
         tmpv, tmph, vtab = self.TMCSample(start, w_hat, self.N, self.V0, it_mcmc = self.gibbs_steps, it_mean=self.it_mean)
         
-        print("Sampling time : ", time.time()-s)
+        #print("Sampling time : ", time.time()-s)
         
         newy = torch.mm(torch.mean(vtab, dim = 2).T, self.V0)[:,:self.nDim]/self.Nv**0.5
         grad_pot = newy.T-self.w_hat_b
@@ -345,7 +345,7 @@ class TMCRBM2D:
             for k in range(self.nb_chain):
                 tmpcompute[:,:,k] = torch.outer(tmpv[:, i, k], tmph[:, i, k])
             prod[:, :, i] = torch.mean(tmpcompute, dim = 2)
-        print("si tau_a prod : ", time.time()-s)
+        #print("si tau_a prod : ", time.time()-s)
         
         s_i_square = torch.zeros([s_i.shape[0], self.nb_point_dim[0], self.nb_point_dim[1]], device=self.device, dtype=self.dtype)
         tau_a_square = torch.zeros([tau_a.shape[0], self.nb_point_dim[0], self.nb_point_dim[1]], device=self.device, dtype=self.dtype)
