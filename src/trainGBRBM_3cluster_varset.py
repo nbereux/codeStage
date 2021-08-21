@@ -18,12 +18,12 @@ X = torch.load('../dataset/data_3c.pt').cuda()
 
 
 Nh = 50  # number of hidden nodes
-lr_W1 = 0.1
-lr_W2 = 0.001
+lr_W1 = 0.01
+lr_W2 = 0.0001
 NGibbs = 100
 n_mb = 100
 n_pcd = n_mb
-ep_max = 100
+ep_max = 1000
 
 fq_msr_RBM = 1000
 
