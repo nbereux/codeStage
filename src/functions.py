@@ -300,4 +300,19 @@ def ComputeProbabilityTMC2D(myRBM, data, nb_chain, it_mcmc, it_mean, N, nb_point
     const = simps(const, w_hat_tmp[0,:,0])
     p_m = res/const
     return square, p_m, w_hat_tmp
-    
+
+def SampleTMC1D(p_m, w_hat_b, n_sample):
+    cdf = np.zeros(len(p_m)-1)
+    for i in range(1,len(p_m)):
+        cdf[i-1] = simps(p_m[:i], w_hat_b[:i])
+
+    sample = torch.rand(n_sample)
+    sample = sample.sort()[0]
+    i = 0
+    for k in range(len(cdf)-1):
+        while(cdf[k+1]>sample[i]):
+            sample[i] = w_hat_b[k]
+            i+=1
+            if i==n_sample:
+                return sample
+    return sample
