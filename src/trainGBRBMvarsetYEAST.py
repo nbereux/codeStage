@@ -1,4 +1,4 @@
-from RBM import GBRBM
+from GBRBM import GBRBM
 import torch
 import h5py
 import numpy as np
@@ -13,7 +13,7 @@ device = torch.device("cuda")
 dtype = torch.float
 torch.set_num_threads(4)
 
-data = torch.tensor(torch.load(path+"../data/yeast.pt"), device = device, dtype = dtype)
+data = torch.tensor(torch.load(path+"../dataset/yeast.pt"), device = device, dtype = dtype)
 
 Nh = 100  # number of hidden nodes
 lr_W1 = 0.01

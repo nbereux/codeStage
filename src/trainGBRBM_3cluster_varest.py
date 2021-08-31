@@ -1,4 +1,4 @@
-from RBM import GBRBM
+from GBRBM import GBRBM
 import torch
 import h5py
 import numpy as np
@@ -21,7 +21,7 @@ Nh = 50  # number of hidden nodes
 lr_W1 = 0.01
 lr_W2 = 0.0001
 NGibbs = 100
-n_mb = 100
+n_mb = 50
 n_pcd = n_mb
 ep_max = 1000
 

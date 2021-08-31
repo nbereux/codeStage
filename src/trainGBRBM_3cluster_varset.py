@@ -1,4 +1,4 @@
-from RBM import GBRBM
+from GBRBM import GBRBM
 import torch
 import h5py
 import numpy as np
@@ -14,14 +14,14 @@ dtype = torch.float
 torch.set_num_threads(4)
 
 
-X = torch.load('../dataset/data_3c.pt').cuda()
+X = torch.load('../dataset/data_3c_samevar.pt').cuda()
 
 
 Nh = 50  # number of hidden nodes
 lr_W1 = 0.01
 lr_W2 = 0.0001
 NGibbs = 100
-n_mb = 100
+n_mb = 50
 n_pcd = n_mb
 ep_max = 1000
 
@@ -45,7 +45,7 @@ myRBM = GBRBM(num_visible=Nv,
                    var_set = var_set)
 
 myRBM.ResetPermChainBatch = True  # Put False for PCD, False give Rdm
-stamp = 'GBRBM_3c_NGibbs'+str(NGibbs)+'_Nh'+str(Nh)+'_Nmb'+str(n_mb)+'_Nepoch'+str(ep_max)+'_'+var_fold+'_lrW1'+str(lr_W1)+'_lrW2'+str(lr_W2)
+stamp = 'GBRBM_3c_samevar_NGibbs'+str(NGibbs)+'_Nh'+str(Nh)+'_Nmb'+str(n_mb)+'_Nepoch'+str(ep_max)+'_'+var_fold+'_lrW1'+str(lr_W1)+'_lrW2'+str(lr_W2)
 myRBM.file_stamp = stamp	
 base = 1.7
 v = np.array([0,1],dtype=int)
