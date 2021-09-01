@@ -25,6 +25,7 @@ class TMCRBM2D:
                  it_mean = 8, # Nb de chaines pour chaque w_hat
                  nb_chain = 15, # Nb it considérée pour la moyenne temporelle de chaque chaine
                  N = 20000, # Contrainte
+                 border_length=0.2,
                  nb_point_dim = torch.tensor([100,100]), # Nb de points de discrétisation pour w_hat
                  verbose = 0,
                  save_fig = False
@@ -64,8 +65,8 @@ class TMCRBM2D:
         self.N = N  
         self.nb_point_dim = nb_point_dim.to(device)
         self.nb_point = self.nb_point_dim.prod()
+        self.border_length = border_length
 
-        self.verbose = verbose
         self.save_fig = save_fig
 
         self.p_m = torch.zeros(self.nb_point-1)
@@ -186,26 +187,28 @@ class TMCRBM2D:
             it_mcmc = self.gibbs_steps
         if it_mean == 0:
             it_mean = self.it_mean
+
         vtab = torch.zeros(v.shape, device=self.device)
         v_curr = v
         norm = 1/(v_curr.shape[0]**0.5)
-        w_curr = (torch.mm(v_curr.T, V)*norm)[:,:w_hat.shape[0]]
+        w_curr = (torch.mm(v_curr.T, V)*norm)[:,:w_hat.shape[0]] # Current tethered weight 
         for t in range(it_mcmc):
             h_curr, _ = self.SampleHiddens01(v_curr)
             h_i = (torch.mm(self.W.T, h_curr)+self.vbias.reshape(v.shape[0],1)) # Nv x Ns
-            w_next = w_curr.clone()
+            w_next = w_curr.clone() 
             
             v_next = torch.clone(v_curr)
             for i in range(v_curr.shape[0]):
-                v_next[i,:] = 1-v_curr[i,:]
+                v_next[i,:] = 1-v_curr[i,:] # Proposed change
                 for j in range(w_next.shape[1]):
-                    w_next[:,j] += ((2*v_next[i,:]-1)*V[i,j]*norm)
+                    w_next[:,j] += ((2*v_next[i,:]-1)*V[i,j]*norm) # New tethered weight
                     
                 # On calcul -DeltaE
                 ΔE = ß*((2*v_next[i,:]-1)*h_i[i,:])-(N/2)*(torch.sum((w_hat.T-w_next)**2, dim=1)-torch.sum((w_hat.T-w_curr)**2, dim=1))
 
                 tir = torch.rand(v_curr.shape[1],1, device = torch.device("cuda")).squeeze()
                 prob = torch.exp(ΔE).squeeze()
+                # Update chains position with probability prob 
                 v_curr[i,:] = torch.where(tir<prob, v_next[i,:], v_curr[i,:])
                 v_next[i,:] = torch.where(tir<prob, v_next[i,:], 1-v_next[i,:])
                 neg_index = torch.ones(w_curr.shape[0], dtype = bool)
@@ -213,6 +216,7 @@ class TMCRBM2D:
                 neg_index[index] = False
                 w_curr[index,:]=  w_next[index, :]
                 w_next[neg_index,:] =  w_curr[neg_index,:]
+            # Temporal mean over the last it_mean iterations
             if (t>= (it_mcmc-it_mean)):
                 vtab += v_curr
         vtab = vtab*(1/it_mean)
@@ -255,26 +259,18 @@ class TMCRBM2D:
         self.hbias += self.lr*ΔHB
 
     def fit_batch(self,X):
-        h_pos_v, h_pos_m = self.SampleHiddens01(X)
-        
-        s = time.time()
-        
+        h_pos_v, h_pos_m = self.SampleHiddens01(X)        
         # SVD des poids
         _, _, self.V0 = torch.svd(self.W)
         if torch.mean(self.V0[:,0]) < 0:
             self.V0 = -self.V0
         
-        # pour adapter la taille de l'intervalle discrétisé à chaque itération
+        # Discretization
         proj_data = torch.mm(X.T, self.V0)/self.Nv**.5
-        width_plus = 0.2
         limits = torch.zeros((2, self.nDim))
         for i in range(self.nDim):
-            limits[0, i] = proj_data[:,i].min()-width_plus
-            limits[1, i] = proj_data[:,i].max()+width_plus
-        limits[0,0] = -0.4
-        limits[1,0] = 1.0
-        limits[0,1] = -1.0
-        limits[1,1] = 0.5
+            limits[0, i] = proj_data[:,i].min()-self.border_length
+            limits[1, i] = proj_data[:,i].max()+self.border_length
         x_grid = np.linspace(limits[0,0], limits[1,0], self.nb_point_dim[0])
         x_grid = np.array([x_grid for i in range(self.nb_point_dim[1])])
         x_grid = x_grid.reshape(self.nb_point)
@@ -290,16 +286,10 @@ class TMCRBM2D:
         for i in range(self.nb_point):
             for j in range(self.nb_chain):
                 w_hat[:,i*self.nb_chain+j] = self.w_hat_b[:,i]
-        
-        #print("Initialisation time : ", time.time()-s)
-        
-        s=time.time()
-        
+        # TMC Sampling      
         tmpv, tmph, vtab = self.TMCSample(start, w_hat, self.N, self.V0, it_mcmc = self.gibbs_steps, it_mean=self.it_mean)
-        
-        #print("Sampling time : ", time.time()-s)
-        
-        newy = torch.mm(torch.mean(vtab, dim = 2).T, self.V0)[:,:self.nDim]/self.Nv**0.5
+        # Probability reconstruction
+        newy = torch.mm(torch.mean(vtab, dim = 2).T, self.V0)[:,:self.nDim]/self.Nv**0.5 #mean over nb_chain
         grad_pot = newy.T-self.w_hat_b
         square = torch.zeros(2, self.nb_point_dim[0], self.nb_point_dim[1])
         self.w_hat_tmp = np.zeros((2, self.nb_point_dim[0], self.nb_point_dim[1]))
@@ -328,8 +318,9 @@ class TMCRBM2D:
         const = simps(const, self.w_hat_tmp[0,:,0])
         self.p_m = torch.tensor(res/const, device=self.device, dtype=self.dtype)
         
-        s_i = torch.mean(tmpv, dim = 2)
-        tau_a = torch.mean(tmph, dim = 2)
+        #Observables reconstruction
+        s_i = torch.mean(tmpv, dim = 2) # mean over nb_chain
+        tau_a = torch.mean(tmph, dim = 2) # mean over nb_chain
         s_i_square = torch.zeros([s_i.shape[0], self.nb_point_dim[0], self.nb_point_dim[1]])
         tau_a_square = torch.zeros([tau_a.shape[0], self.nb_point_dim[0], self.nb_point_dim[1]])
 
@@ -340,12 +331,10 @@ class TMCRBM2D:
         prod = torch.zeros(
             (self.Nv, self.Nh, self.nb_point), device=self.device)
         tmpcompute = torch.zeros(self.Nv, self.Nh, self.nb_chain)
-        s = time.time()
         for i in range(self.nb_point):
             for k in range(self.nb_chain):
                 tmpcompute[:,:,k] = torch.outer(tmpv[:, i, k], tmph[:, i, k])
             prod[:, :, i] = torch.mean(tmpcompute, dim = 2)
-        #print("si tau_a prod : ", time.time()-s)
         
         s_i_square = torch.zeros([s_i.shape[0], self.nb_point_dim[0], self.nb_point_dim[1]], device=self.device, dtype=self.dtype)
         tau_a_square = torch.zeros([tau_a.shape[0], self.nb_point_dim[0], self.nb_point_dim[1]], device=self.device, dtype=self.dtype)

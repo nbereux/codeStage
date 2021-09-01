@@ -21,11 +21,12 @@ class TMCRBM:
                  UpdCentered = True, # Update using centered gradients
                  CDLearning = False,
                  ResetPermChainBatch = False,
-                 it_mean = 8, # Nb de chaines pour chaque w_hat
-                 nb_chain = 15, # Nb it considérée pour la moyenne temporelle de chaque chaine
-                 N = 20000, # Contrainte
-                 nb_point = 1000, # Nb de points de discrétisation pour w_hat
-                 verbose = 0,
+                 it_mean = 8, # number of iterations used for temporal mean
+                 nb_chain = 15, # number of chain for each point
+                 N = 20000, # Constraint on gaussian bath
+                 nb_point = 1000, # number of points used for discretization
+                 border_length = 0.2, #length around the data used to compute the probability
+                 direction = 0,
                  save_fig = False
                  ): 
         self.Nv = num_visible        
@@ -62,9 +63,9 @@ class TMCRBM:
         self.it_mean = it_mean  
         self.N = N  
         self.nb_point = nb_point
-
-        self.verbose = verbose
+        self.border_length = border_length
         self.save_fig = save_fig
+        self.direction = 0
 
         self.p_m = torch.zeros(nb_point-1)
         self.w_hat_b = torch.zeros(nb_point)
@@ -95,6 +96,14 @@ class TMCRBM:
             self.hbias = self.hbias.cuda()
             if PCD:
                 self.X_pc = self.X_pc.cuda()
+
+    def ImConcat(self, X, ncol=10, nrow=5, sx=28, sy=28, ch=1):
+        tile_X = []
+        for c in range(nrow):
+            L = torch.cat((tuple(X[i, :].reshape(sx, sy, ch)
+                                 for i in np.arange(c*ncol, (c+1)*ncol))))
+            tile_X.append(L)
+        return torch.cat(tile_X, 1)
 
     def SetVisBias(self,X):
         NS = X.shape[1]
@@ -169,50 +178,48 @@ class TMCRBM:
 
         return v, mv, h, mh
 
-
+    # Monte-Carlo algorithm for the chains 
     def TMCSample(self, v, w_hat, N, V, it_mcmc=0, it_mean=0, ß=1):
         if it_mcmc == 0:
             it_mcmc = self.gibbs_steps
         if it_mean == 0:
             it_mean = self.it_mean
+
         vtab = torch.zeros(v.shape, device=self.device)
         v_curr = v
-        # V = V
         norm = 1/(v_curr.shape[0]**0.5)
-        w_curr = (torch.mv(v_curr.T, V)*norm)
-        # index = torch.randperm(v_curr.shape[0])
+        w_curr = (torch.mv(v_curr.T, V)*norm) # Compute current tethered weight
         for t in range(it_mcmc):
-            # print(t)
             h_curr, _ = self.SampleHiddens01(v_curr)
             h_i = (torch.mm(self.W.T, h_curr) +
                    self.vbias.reshape(v.shape[0], 1))  # Nv x Ns
             w_next = w_curr.clone()
             v_next = torch.clone(v_curr)
-            # index = torch.randperm(v_curr.shape[0])
+            for i in range(v_curr.shape[0]):
+                v_next[i, :] = 1-v_curr[i, :] # proposed change
+                w_next += ((2*v_next[i, :]-1)*V[i]*norm) # Compute new tethered weight
 
-            for idx in range(v_curr.shape[0]):
-                i = idx
-                v_next[i, :] = 1-v_curr[i, :]
-                w_next += ((2*v_next[i, :]-1)*V[i]*norm)
-
-                # On calcul -DeltaE
+                # Compute -DeltaE
                 ΔE = ß*((2*v_next[i, :]-1)*h_i[i, :])-(N/2) * \
                     ((w_hat-w_next)**2-(w_hat-w_curr)**2)
-
                 tir = torch.rand(
                     v_curr.shape[1], 1, device=self.device).squeeze()
                 prob = torch.exp(ΔE).squeeze()
+
+                # Update chains position with probability prob 
                 v_curr[i, :] = torch.where(
                     tir < prob, v_next[i, :], v_curr[i, :])
                 v_next[i, :] = torch.where(
                     tir < prob, v_next[i, :], 1-v_next[i, :])
                 w_curr = torch.where(tir < prob, w_next, w_curr)
                 w_next = torch.where(tir < prob, w_next, w_curr)
+            # Temporal mean over the last it_mean iterations
             if (t >= (it_mcmc-it_mean)):
                 vtab += v_curr
         vtab = vtab*(1/it_mean)
         return v_curr, h_curr, vtab
 
+    # Update parameters of the RBM
     def updateWeights(self, v_pos, h_pos, negTermV, negTermH, negTermW):
         lr_p = self.lr/self.mb_s
         lr_n = self.lr
@@ -224,9 +231,7 @@ class TMCRBM:
         self.VisDataAv = torch.mean(v_pos, 1).float()
         self.HidDataAv = torch.mean(h_pos_m, 1).float()    
         
-        NormPos = 1.0/self.mb_s
-        #NormNeg = 1.0/self.num_pcd
-        
+        NormPos = 1.0/self.mb_s        
         
         Xc_pos = (v_pos.t() - self.VisDataAv).t()
         Hc_pos = (h_pos_m.t() - self.HidDataAv).t()
@@ -253,30 +258,29 @@ class TMCRBM:
             self.Nv, self.nb_chain*self.nb_point, device=self.device))
         # SVD des poids
         _, _, self.V0 = torch.svd(self.W)
-        self.V0 = self.V0[:, 0]
+        self.V0 = self.V0[:, self.direction]
         if torch.mean(self.V0) < 0:
             self.V0 = -self.V0
         
-        # pour adapter la taille de l'intervalle discrétisé à chaque itération
+        # discretization
         proj_data = torch.mv(X.T, self.V0)
         xmin = torch.min(proj_data) - 0.2
         xmax = torch.max(proj_data) + 0.2
-
-        xmin = -1.5
-        xmax = 1.5
         self.w_hat_b = torch.linspace(
             xmin, xmax, steps=self.nb_point, device=self.device)
+        # discretization by repeating nb_chain times each point 
         w_hat = torch.zeros(self.nb_chain*self.nb_point, device=self.device)
         for i in range(self.nb_point):
             for j in range(self.nb_chain):
                 w_hat[i*self.nb_chain+j] = self.w_hat_b[i]
+        # TMC Sampling
         tmpv, tmph, vtab = self.TMCSample(
             start, w_hat, self.N, self.V0, it_mcmc=self.gibbs_steps, it_mean=self.it_mean)
-        
+        # Probability reconstruction
         y = np.array(torch.mm(vtab.T, self.V0.unsqueeze(1)
                                 ).cpu().squeeze())/self.Nv**0.5
         newy = np.array([np.mean(y[i*self.nb_chain:i*self.nb_chain+self.nb_chain])
-                            for i in range(self.nb_point)])
+                            for i in range(self.nb_point)]) # mean over nb_chain
         w_hat_b_np = self.w_hat_b.cpu().numpy()
         res = np.zeros(len(self.w_hat_b)-1)
         for i in range(1, len(self.w_hat_b)):
@@ -284,15 +288,13 @@ class TMCRBM:
         const = simps(np.exp(self.N*res-np.max(self.N*res)), w_hat_b_np[:-1])
         self.p_m = torch.tensor(np.exp(self.N*res-np.max(self.N*res)) /
                             const, device=self.device)
+        # Observable reconstruction
         s_i = torch.stack([torch.mean(
             tmpv[:, i*self.nb_chain:i*self.nb_chain+self.nb_chain], dim=1) for i in range(self.nb_point)], 1)
         tau_a = torch.stack([torch.mean(
             tmph[:, i*self.nb_chain:i*self.nb_chain+self.nb_chain], dim=1) for i in range(self.nb_point)], 1)
         s_i = torch.trapz(s_i[:, 1:]*self.p_m, self.w_hat_b[1:], dim=1)
         tau_a = torch.trapz(tau_a[:, 1:]*self.p_m, self.w_hat_b[1:], dim=1)
-
-        
-
         prod = torch.zeros(
             (self.Nv, self.Nh, self.nb_point*self.nb_chain), device=self.device)
         for i in range(tmpv.shape[1]):
@@ -359,9 +361,6 @@ class TMCRBM:
                                      data=self.hbias.cpu())
                     f.create_dataset('p_m'+str(self.up_tot), data=self.p_m.cpu())
                     f.close()
-                    if self.verbose == 1 :
-                        _, S, _ = torch.svd(self.W)
-                        print(S[:2])
                 self.up_tot += 1
 
             if self.ep_tot in self.list_save_rbm:

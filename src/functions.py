@@ -213,13 +213,12 @@ def singValTrain_3(fname, alltimes, device, nval=-1):
     f.close()
     return ret
 
-def ComputeProbabilityTMC1D(myRBM, data, nb_chain, it_mcmc, it_mean, N, nb_point, border_length, device):
+def ComputeProbabilityTMC1D(myRBM, data, nb_chain, it_mcmc, it_mean, N, nb_point, border_length, V_g, device):
     start = torch.bernoulli(torch.rand(myRBM.Nv, nb_chain*nb_point, device=device))
-    _, _, V_g = torch.svd(myRBM.W)
-    V_g = V_g[:, 0]
+    V_g = V_g[:, 2]
     if torch.mean(V_g) < 0:
         V_g = -V_g
-    proj_data = torch.mv(data, V_g)/myRBM.Nv**0.5
+    proj_data = torch.mv(data, V_g)/data.shape[0]
     xmin = torch.min(proj_data) - border_length
     xmax = torch.max(proj_data) + border_length
     w_hat_b = torch.linspace(xmin, xmax, steps=nb_point, device=device)
@@ -316,3 +315,11 @@ def SampleTMC1D(p_m, w_hat_b, n_sample):
             if i==n_sample:
                 return sample
     return sample
+
+def genDataTMC1D(myRBM, p_m, w_hat, n_sample, N, V, it_mcmc=30):
+    gen_m = SampleTMC1D(p_m.cpu(), w_hat.cpu(), n_sample)
+    vinit = torch.bernoulli(torch.rand(
+        (myRBM.Nv, n_sample), device=myRBM.device, dtype=myRBM.dtype))
+    tmpv, tmph, vtab = myRBM.TMCSample(vinit, gen_m.cuda(), N, V[:,0], it_mcmc = it_mcmc)
+    si,mi,_,_ = myRBM.Sampling(tmpv,it_mcmc=1)
+    return si, mi
