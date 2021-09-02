@@ -25,8 +25,9 @@ class TMCRBM:
                  nb_chain = 15, # number of chain for each point
                  N = 20000, # Constraint on gaussian bath
                  nb_point = 1000, # number of points used for discretization
-                 border_length = 0.2, #length around the data used to compute the probability
-                 direction = 0,
+                 border_length = 0.2, # length around the data used to compute the probability
+                 direction = 0, # The direction used for the discretization
+                 PCA = False, # if True then PCA else weights SVD
                  save_fig = False
                  ): 
         self.Nv = num_visible        
@@ -65,7 +66,8 @@ class TMCRBM:
         self.nb_point = nb_point
         self.border_length = border_length
         self.save_fig = save_fig
-        self.direction = 0
+        self.direction = direction
+        self.PCA = PCA
 
         self.p_m = torch.zeros(nb_point-1)
         self.w_hat_b = torch.zeros(nb_point)
@@ -256,11 +258,17 @@ class TMCRBM:
 
         start = torch.bernoulli(torch.rand(
             self.Nv, self.nb_chain*self.nb_point, device=self.device))
-        # SVD des poids
-        _, _, self.V0 = torch.svd(self.W)
-        self.V0 = self.V0[:, self.direction]
-        if torch.mean(self.V0) < 0:
-            self.V0 = -self.V0
+        # PCA or weigths SVD
+        if self.PCA:
+            _, _, self.V0 = torch.svd(X)
+            self.V0 = self.V0[:, self.direction]
+            if torch.mean(self.V0) < 0:
+                self.V0 = -self.V0
+        else:
+            _, _, self.V0 = torch.svd(self.W)
+            self.V0 = self.V0[:, self.direction]
+            if torch.mean(self.V0) < 0:
+                self.V0 = -self.V0
         
         # discretization
         proj_data = torch.mv(X.T, self.V0)
