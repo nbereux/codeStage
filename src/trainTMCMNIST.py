@@ -6,7 +6,7 @@ import gzip
 import pickle
 
 
-device = torch.device("cuda")
+device = torch.device("cuda:1")
 dtype = torch.float
 torch.set_num_threads(4)
 
@@ -35,7 +35,11 @@ N = 20000
 nb_chain = 15
 nb_point = 1000
 
-stamp = 'TMCRBM_MNIST_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Nv' + str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr) + '_N' + str(N) + '_Npoint' + str(nb_point) + '_Nchain' + str(nb_chain)
+
+PCA = True
+direction = 2
+
+stamp = 'TMCRBM_MNIST2_NGibbs_'+str(NGibbs)+'_Nh'+str(Nh)+'_Nv' + str(Nv)+'_Nmb'+str(mb_s)+'_Nepoch'+str(ep_max)+'_lr_'+str(lr) + '_N' + str(N) + '_Npoint' + str(nb_point) + '_Nchain' + str(nb_chain)
 myRBM = TMCRBM(num_visible=Nv,
             num_hidden=Nh,
             device=device,
@@ -49,7 +53,8 @@ myRBM = TMCRBM(num_visible=Nv,
             N = N,
             nb_chain = nb_chain,
             nb_point=nb_point,
-            verbose=verbose,
+            direction=2,
+            PCA = PCA,
             save_fig = save_fig
             )
 
