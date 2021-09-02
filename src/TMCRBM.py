@@ -260,7 +260,7 @@ class TMCRBM:
             self.Nv, self.nb_chain*self.nb_point, device=self.device))
         # PCA or weigths SVD
         if self.PCA:
-            _, _, self.V0 = torch.svd(X)
+            _, _, self.V0 = torch.svd(X.T)
             self.V0 = self.V0[:, self.direction]
             if torch.mean(self.V0) < 0:
                 self.V0 = -self.V0
