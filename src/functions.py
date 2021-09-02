@@ -215,10 +215,10 @@ def singValTrain_3(fname, alltimes, device, nval=-1):
 
 def ComputeProbabilityTMC1D(myRBM, data, nb_chain, it_mcmc, it_mean, N, nb_point, border_length, V_g, device):
     start = torch.bernoulli(torch.rand(myRBM.Nv, nb_chain*nb_point, device=device))
-    V_g = V_g[:, 2]
+    V_g = V_g[:, 0]
     if torch.mean(V_g) < 0:
         V_g = -V_g
-    proj_data = torch.mv(data, V_g)/data.shape[0]
+    proj_data = torch.mv(data, V_g)/myRBM.Nv**.5
     xmin = torch.min(proj_data) - border_length
     xmax = torch.max(proj_data) + border_length
     w_hat_b = torch.linspace(xmin, xmax, steps=nb_point, device=device)

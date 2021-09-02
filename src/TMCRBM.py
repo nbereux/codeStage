@@ -253,6 +253,19 @@ class TMCRBM:
             torch.mv(ΔW.float(), self.VisDataAv)
         self.hbias += self.lr*ΔHB
 
+    def computeProbability(self, vtab):
+        y = np.array(torch.mm(vtab.T, self.V0.unsqueeze(1)
+                                ).cpu().squeeze())/self.Nv**0.5
+        newy = np.array([np.mean(y[i*self.nb_chain:i*self.nb_chain+self.nb_chain])
+                            for i in range(self.nb_point)]) # mean over nb_chain
+        w_hat_b_np = self.w_hat_b.cpu().numpy()
+        res = np.zeros(len(self.w_hat_b)-1)
+        for i in range(1, len(self.w_hat_b)):
+            res[i-1] = simps(newy[:i]-w_hat_b_np[:i], w_hat_b_np[:i])
+        const = simps(np.exp(self.N*res-np.max(self.N*res)), w_hat_b_np[:-1])
+        return torch.tensor(np.exp(self.N*res-np.max(self.N*res)) /
+                            const, device=self.device) 
+
     def fit_batch(self,X):
         h_pos_v, h_pos_m = self.SampleHiddens01(X)
 
@@ -285,17 +298,8 @@ class TMCRBM:
         tmpv, tmph, vtab = self.TMCSample(
             start, w_hat, self.N, self.V0, it_mcmc=self.gibbs_steps, it_mean=self.it_mean)
         # Probability reconstruction
-        y = np.array(torch.mm(vtab.T, self.V0.unsqueeze(1)
-                                ).cpu().squeeze())/self.Nv**0.5
-        newy = np.array([np.mean(y[i*self.nb_chain:i*self.nb_chain+self.nb_chain])
-                            for i in range(self.nb_point)]) # mean over nb_chain
-        w_hat_b_np = self.w_hat_b.cpu().numpy()
-        res = np.zeros(len(self.w_hat_b)-1)
-        for i in range(1, len(self.w_hat_b)):
-            res[i-1] = simps(newy[:i]-w_hat_b_np[:i], w_hat_b_np[:i])
-        const = simps(np.exp(self.N*res-np.max(self.N*res)), w_hat_b_np[:-1])
-        self.p_m = torch.tensor(np.exp(self.N*res-np.max(self.N*res)) /
-                            const, device=self.device)
+        self.p_m =self.computeProbability(vtab)
+
         # Observable reconstruction
         s_i = torch.stack([torch.mean(
             tmpv[:, i*self.nb_chain:i*self.nb_chain+self.nb_chain], dim=1) for i in range(self.nb_point)], 1)
