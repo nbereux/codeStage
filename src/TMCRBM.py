@@ -69,9 +69,9 @@ class TMCRBM:
         self.direction = direction
         self.PCA = PCA
 
-        self.p_m = torch.zeros(nb_point-1)
-        self.w_hat_b = torch.zeros(nb_point)
-        _, _, self.V0 = torch.svd(self.W)
+        self.p_m = torch.zeros(nb_point-1) # Probabilité en fonction de la contrainte
+        self.w_hat_b = torch.zeros(nb_point) # discrétisation de la direction
+        self.V0 = torch.zeros(1, device=self.device) # Vecteur de projection
 
     # save RBM's parameters
     def saveRBM(self,fname):
@@ -181,6 +181,10 @@ class TMCRBM:
         return v, mv, h, mh
 
     # Monte-Carlo algorithm for the chains 
+    # v : point de départ des MCMC (Nv x nb_point*nb_chain)
+    # w_hat : valeur du paramètre de contrainte (nb_point*nb_chain)
+    # N = self.N
+    # V = self.V0
     def TMCSample(self, v, w_hat, N, V, it_mcmc=0, it_mean=0, ß=1):
         if it_mcmc == 0:
             it_mcmc = self.gibbs_steps
@@ -191,12 +195,16 @@ class TMCRBM:
         v_curr = v
         norm = 1/(v_curr.shape[0]**0.5)
         w_curr = (torch.mv(v_curr.T, V)*norm) # Compute current tethered weight
+
+        # we perform it_mcmc steps de MC
         for t in range(it_mcmc):
             h_curr, _ = self.SampleHiddens01(v_curr)
             h_i = (torch.mm(self.W.T, h_curr) +
                    self.vbias.reshape(v.shape[0], 1))  # Nv x Ns
             w_next = w_curr.clone()
             v_next = torch.clone(v_curr)
+
+            # we visit all sites to propose MC flip
             for i in range(v_curr.shape[0]):
                 v_next[i, :] = 1-v_curr[i, :] # proposed change
                 w_next += ((2*v_next[i, :]-1)*V[i]*norm) # Compute new tethered weight
@@ -244,37 +252,37 @@ class TMCRBM:
         ΔW =Hc_pos.mm(Xc_pos.t())*NormPos - ΔW_neg
 
         self.W += ΔW*self.lr
-
+        
         ΔVB = torch.sum(v_pos, 1)*NormPos - si_neg - \
             torch.mv(ΔW.t().float(), self.HidDataAv)
         self.vbias += self.lr*ΔVB
 
         ΔHB = torch.sum(h_pos_m, 1)*NormPos - τa_neg - \
-            torch.mv(ΔW.float(), self.VisDataAv)
+            torch.mv(ΔW.float(), self.VisDa0taAv)
         self.hbias += self.lr*ΔHB
 
     def computeProbability(self, vtab):
         y = np.array(torch.mm(vtab.T, self.V0.unsqueeze(1)
-                                ).cpu().squeeze())/self.Nv**0.5
+                                ).cpu().squeeze())/self.Nv**0.5 # Projection sur le paramètre de contrainte
         newy = np.array([np.mean(y[i*self.nb_chain:i*self.nb_chain+self.nb_chain])
                             for i in range(self.nb_point)]) # mean over nb_chain
         w_hat_b_np = self.w_hat_b.cpu().numpy()
         res = np.zeros(len(self.w_hat_b)-1)
+        #integrale sur la dérivée
         for i in range(1, len(self.w_hat_b)):
             res[i-1] = simps(newy[:i]-w_hat_b_np[:i], w_hat_b_np[:i])
+        # constante de normalisation
         const = simps(np.exp(self.N*res-np.max(self.N*res)), w_hat_b_np[:-1])
         return torch.tensor(np.exp(self.N*res-np.max(self.N*res)) /
                             const, device=self.device) 
-
-    def fit_batch(self,X):
-        h_pos_v, h_pos_m = self.SampleHiddens01(X)
-
+    
+    def computeProbabilityAnalysis(self, X):
         start = torch.bernoulli(torch.rand(
             self.Nv, self.nb_chain*self.nb_point, device=self.device))
         # PCA or weigths SVD
         if self.PCA:
             _, _, self.V0 = torch.svd(X.T)
-            self.V0 = self.V0[:, self.direction]
+            self.V0 = self.V0[:, self.direction].to(self.device)
             if torch.mean(self.V0) < 0:
                 self.V0 = -self.V0
         else:
@@ -282,11 +290,11 @@ class TMCRBM:
             self.V0 = self.V0[:, self.direction]
             if torch.mean(self.V0) < 0:
                 self.V0 = -self.V0
-        
+    
         # discretization
-        proj_data = torch.mv(X.T, self.V0)
-        xmin = torch.min(proj_data) - 0.2
-        xmax = torch.max(proj_data) + 0.2
+        proj_data = torch.mv(X, self.V0)
+        xmin = torch.min(proj_data) - self.border_length
+        xmax = torch.max(proj_data) + self.border_length
         self.w_hat_b = torch.linspace(
             xmin, xmax, steps=self.nb_point, device=self.device)
         # discretization by repeating nb_chain times each point 
@@ -295,22 +303,53 @@ class TMCRBM:
             for j in range(self.nb_chain):
                 w_hat[i*self.nb_chain+j] = self.w_hat_b[i]
         # TMC Sampling
-        tmpv, tmph, vtab = self.TMCSample(
+        _, _, vtab = self.TMCSample(
             start, w_hat, self.N, self.V0, it_mcmc=self.gibbs_steps, it_mean=self.it_mean)
         # Probability reconstruction
         self.p_m =self.computeProbability(vtab)
 
+    def fit_batch(self, X):
+        h_pos_v, h_pos_m = self.SampleHiddens01(X)
+        # Initialisation des chaines
+        start = torch.bernoulli(torch.rand(
+            self.Nv, self.nb_chain*self.nb_point, device=self.device))
+        # PCA or weigths SVD
+        if not self.PCA:
+            _, _, self.V0 = torch.svd(self.W)
+            self.V0 = self.V0[:, self.direction]
+            if torch.mean(self.V0) < 0:
+                self.V0 = -self.V0
+        
+        # discretization
+        proj_data = torch.mv(X.T, self.V0)
+        xmin = torch.min(proj_data) - self.border_length
+        xmax = torch.max(proj_data) + self.border_length
+        self.w_hat_b = torch.linspace(
+            xmin, xmax, steps=self.nb_point, device=self.device)
+        # discretization by repeating nb_chain times each point 
+        w_hat = torch.zeros(self.nb_chain*self.nb_point, device=self.device)
+        for i in range(self.nb_point):
+            for j in range(self.nb_chain):
+                w_hat[i*self.nb_chain+j] = self.w_hat_b[i]
+        # A AMELIORER
+
+        # TMC Sampling
+        biased_vis , biased_hid, vis_time_av = self.TMCSample(
+            start, w_hat, self.N, self.V0, it_mcmc=self.gibbs_steps, it_mean=self.it_mean)
+        # Probability reconstruction
+        self.p_m =self.computeProbability(vis_time_av)
+
         # Observable reconstruction
         s_i = torch.stack([torch.mean(
-            tmpv[:, i*self.nb_chain:i*self.nb_chain+self.nb_chain], dim=1) for i in range(self.nb_point)], 1)
+            biased_vis[:, i*self.nb_chain:i*self.nb_chain+self.nb_chain], dim=1) for i in range(self.nb_point)], 1)
         tau_a = torch.stack([torch.mean(
-            tmph[:, i*self.nb_chain:i*self.nb_chain+self.nb_chain], dim=1) for i in range(self.nb_point)], 1)
+            biased_hid[:, i*self.nb_chain:i*self.nb_chain+self.nb_chain], dim=1) for i in range(self.nb_point)], 1)
         s_i = torch.trapz(s_i[:, 1:]*self.p_m, self.w_hat_b[1:], dim=1)
         tau_a = torch.trapz(tau_a[:, 1:]*self.p_m, self.w_hat_b[1:], dim=1)
         prod = torch.zeros(
             (self.Nv, self.Nh, self.nb_point*self.nb_chain), device=self.device)
-        for i in range(tmpv.shape[1]):
-            prod[:, :, i] = torch.outer(tmpv[:, i], tmph[:, i])
+        for i in range(biased_vis.shape[1]):
+            prod[:, :, i] = torch.outer(biased_vis[:, i], biased_hid[:, i])
         prod = torch.stack([torch.mean(
             prod[:, :, i*self.nb_chain:i*self.nb_chain+self.nb_chain], dim=2) for i in range(self.nb_point)], 2)
         prod = torch.trapz(prod[:, :, 1:]*self.p_m, self.w_hat_b[1:], dim=2)
@@ -325,6 +364,13 @@ class TMCRBM:
         return X[:,m*self.mb_s:(m+1)*self.mb_s]
 
     def fit(self, X, ep_max=0):
+
+        if self.PCA:
+            _, _, self.V0 = torch.svd(X.T)
+            self.V0 = self.V0[:, self.direction].to(self.device)
+            if torch.mean(self.V0) < 0:
+                self.V0 = -self.V0
+        
         if ep_max == 0:
             ep_max = self.ep_max
 

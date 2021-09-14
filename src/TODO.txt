@@ -1,0 +1,5 @@
+notebook TMC1D et TMC2D
+notebook GBRBM
+script entrainement yeast
+script entrainement 1d5c TMC1D + script potentiel parfait 
+script entrainement 2d3c TMC2D

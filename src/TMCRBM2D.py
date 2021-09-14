@@ -27,7 +27,6 @@ class TMCRBM2D:
                  N = 20000, # Contrainte
                  border_length=0.2,
                  nb_point_dim = torch.tensor([100,100]), # Nb de points de discrétisation pour w_hat
-                 verbose = 0,
                  save_fig = False
                  ): 
         self.Nv = num_visible        
